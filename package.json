@@ -1,0 +1,29 @@
+{
+  "name": "reviveai",
+  "version": "0.1.0",
+  "description": "Autonomous Revenue Recovery Agent for small businesses",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "build": "pnpm -r run build",
+    "start": "cd packages/server && node dist/index.js",
+    "db:seed": "cd packages/server && tsx scripts/seed.ts",
+    "db:migrate": "cd packages/server && tsx scripts/migrate.ts",
+    "test": "pnpm -r run test",
+    "lint": "pnpm -r run lint",
+    "format": "pnpm -r run format"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  },
+  "workspaces": [
+    "packages/server",
+    "packages/client"
+  ]
+}

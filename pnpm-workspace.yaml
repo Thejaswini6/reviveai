@@ -1,0 +1,9 @@
+packages:
+  - 'packages/server'
+  - 'packages/client'
+
+catalogs:
+  default:
+    typescript: ^5.3.3
+    '@types/node': ^20.10.0
+    zod: ^3.22.4

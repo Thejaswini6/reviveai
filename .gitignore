@@ -1,0 +1,70 @@
+# Dependencies
+node_modules/
+pnpm-lock.yaml
+npm-debug.log
+yarn-error.log
+
+# Environment variables (NEVER commit these)
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+out/
+
+# Database
+data/reviveai.db
+data/reviveai.db-shm
+data/reviveai.db-wal
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.eslintcache
+
+# OS
+Thumbs.db
+.DS_Store
+*.log
+
+# Client build
+packages/client/dist/
+packages/client/.vite/
+
+# Server build
+packages/server/dist/
+
+# Vite
+.env.vite
+
+# Testing
+coverage/
+.nyc_output/
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+# macOS
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# Misc
+.cache/
+.turbo/
