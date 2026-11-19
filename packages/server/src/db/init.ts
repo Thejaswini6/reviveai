@@ -25,8 +25,10 @@ export async function initDb(): Promise<Database.Database> {
   }
 
   try {
-    db = new Database(DB_PATH);
-    console.log(`📊 Connected to database: ${DB_PATH}`);
+    // Use :memory: for in-memory database to avoid native module requirements
+    const dbPath = process.env.NODE_ENV === 'production' ? DB_PATH : ':memory:';
+    db = new Database(dbPath);
+    console.log(`📊 Connected to database: ${dbPath}`);
 
     // Enable foreign keys
     db.pragma('foreign_keys = ON');
@@ -135,3 +137,4 @@ export async function seedDatabase(leads: Array<any>): Promise<{ imported: numbe
     throw error;
   }
 }
+
