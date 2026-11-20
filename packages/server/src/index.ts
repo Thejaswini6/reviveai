@@ -4,6 +4,7 @@
  */
 
 import express from 'express';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { initDb, closeDb } from './db/init.js';
@@ -335,19 +336,22 @@ app.use('/api/agent', (req, res) => {
   });
 });
 
-// Static files (production)
-if (ENV.NODE_ENV === 'production') {
-  const staticPath = path.join(__dirname, '../../client/dist');
+// Static files — serve React production assets whenever client dist exists
+const staticPath = path.resolve(__dirname, '../../client/dist');
+if (fs.existsSync(staticPath)) {
+  logger.info(`📁 Serving static assets from ${staticPath}`);
   app.use(express.static(staticPath));
 
   app.get('/', (req, res) => {
     res.sendFile(path.join(staticPath, 'index.html'));
   });
 
-  // SPA fallback
+  // SPA fallback for all non-API routes
   app.get('*', (req, res) => {
     res.sendFile(path.join(staticPath, 'index.html'));
   });
+} else {
+  logger.warn(`⚠️ Client static path not found at ${staticPath} — React frontend will not be served`);
 }
 
 // Error handling
