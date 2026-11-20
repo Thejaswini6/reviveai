@@ -22,8 +22,15 @@
   font-size: 0.9375rem;
 }
 
-.btn-primary {
+.header-actions {
   display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.btn-primary {
+  display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.625rem 1.25rem;
@@ -32,12 +39,39 @@
   border-radius: var(--radius-md);
   font-weight: 500;
   font-size: 0.9375rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .btn-primary:hover {
   background: var(--primary-dark);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: var(--border);
+  transform: translateY(-1px);
+}
+
+.btn-secondary svg,
+.btn-primary svg {
+  flex-shrink: 0;
 }
 
 /* Summary Cards */

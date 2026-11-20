@@ -265,7 +265,7 @@ function DashboardEnhanced({ onViewLead, onNavigateToContact }: DashboardProps) 
             <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M8 2v12m6-6H2"/>
             </svg>
-            + New Inquiry
+            New Inquiry
           </button>
           <button className="btn-secondary" onClick={fetchData}>
             <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
