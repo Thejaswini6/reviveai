@@ -29,9 +29,10 @@ interface Summary {
 
 interface DashboardProps {
   onViewLead: (leadId: string) => void
+  onNavigateToContact?: () => void
 }
 
-function DashboardEnhanced({ onViewLead }: DashboardProps) {
+function DashboardEnhanced({ onViewLead, onNavigateToContact }: DashboardProps) {
   const [leads, setLeads] = useState<Lead[]>([])
   const [summary, setSummary] = useState<Summary | null>(null)
   const [loading, setLoading] = useState(true)
@@ -241,6 +242,31 @@ function DashboardEnhanced({ onViewLead }: DashboardProps) {
           <p>Monitor and recover stale leads with AI assistance</p>
         </div>
         <div className="header-actions">
+          {onNavigateToContact && (
+            <button
+              className="btn-primary"
+              onClick={onNavigateToContact}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                background: 'linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%)',
+                color: 'white',
+                border: 'none',
+                padding: '0.625rem 1rem',
+                borderRadius: '8px',
+                fontWeight: 600,
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(99, 102, 241, 0.25)'
+              }}
+            >
+              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M8 2v12m6-6H2"/>
+              </svg>
+              + New Inquiry
+            </button>
+          )}
           <button className="btn-secondary" onClick={fetchData}>
             <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M3 8a5 5 0 015-5m0 10a5 5 0 005-5"/>

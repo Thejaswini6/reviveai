@@ -15,6 +15,7 @@ import { checkLeadEligibility, validateActionApproval } from './services/eligibi
 import { getBusinessProfile } from './services/businessConfig.js';
 import { generateIndustryAdaptiveAnalysis } from './services/agentPrompts.js';
 import { executeRecoveryAnalysis } from './services/recoveryAgent.js';
+import { sendRecoveryOutreach, sendContactFormNotification } from './services/emailService.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -192,7 +193,7 @@ app.get('/api/agent/actions', (req, res) => {
 });
 
 // Approve an action (re-checks safety rules before execution)
-app.post('/api/agent/actions/:id/approve', (req, res) => {
+app.post('/api/agent/actions/:id/approve', async (req, res) => {
   const { id } = req.params;
   const action = MOCK_AGENT_ACTIONS.find(a => a.id === id);
   
@@ -224,16 +225,35 @@ app.post('/api/agent/actions/:id/approve', (req, res) => {
   lead.status = 'CONTACTED';
   lead.last_contacted_at = new Date().toISOString();
   lead.follow_up_count += 1;
+
+  // Dispatch recovery email via configured adapter (mock or GoDaddy domain SMTP)
+  let subject = 'Follow-up regarding your service request';
+  try {
+    const analysis = JSON.parse(action.analysis_json || '{}');
+    if (analysis.recovery_message?.subject) {
+      subject = analysis.recovery_message.subject;
+    }
+  } catch {
+    // fallback default subject
+  }
+
+  const emailResult = await sendRecoveryOutreach({
+    to: lead.email,
+    customerName: lead.name,
+    subject,
+    body: action.generated_message,
+  });
   
   res.json({
     success: true,
     action,
     email_log: {
-      id: `email-${Date.now()}`,
-      status: 'sent',
+      id: emailResult.messageId,
+      status: emailResult.success ? 'sent' : 'failed',
       sent_at: new Date().toISOString(),
       recipient: lead.email,
-      channel: 'email (simulated)'
+      channel: emailResult.channel === 'smtp' ? 'email (GoDaddy Domain SMTP)' : 'email (simulated)',
+      error: emailResult.error
     }
   });
 });
@@ -254,6 +274,73 @@ app.post('/api/agent/actions/:id/reject', (req, res) => {
   res.json({
     success: true,
     message: 'Action rejected'
+  });
+});
+
+// Contact Form Endpoint (GoDaddy Hackathon Slide 10, 12, 18 requirement)
+// Ingests customer inquiries and forwards notification to domain mailbox
+app.post('/api/contact', async (req, res) => {
+  const { name, email, phone, service, message, potential_value } = req.body || {};
+
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    return res.status(400).json({ success: false, error: 'Name is required' });
+  }
+
+  if (!email || typeof email !== 'string' || !email.includes('@')) {
+    return res.status(400).json({ success: false, error: 'Valid email address is required' });
+  }
+
+  if (!message || typeof message !== 'string' || !message.trim()) {
+    return res.status(400).json({ success: false, error: 'Message is required' });
+  }
+
+  const leadId = `RV-${Date.now().toString().slice(-4)}`;
+  const newLead = {
+    id: leadId,
+    business_id: 'business-001',
+    name: name.trim(),
+    email: email.trim(),
+    phone: (phone || '').trim(),
+    message: message.trim(),
+    enquiry_type: (service || 'AC servicing').trim(),
+    potential_value: Number(potential_value) || 5000,
+    status: 'NEW',
+    received_at: new Date().toISOString(),
+    last_contacted_at: null,
+    follow_up_count: 0,
+    contact_consent: 'CONSENTED',
+    preferred_channel: 'email',
+    booking_status: 'NOT_BOOKED',
+    payment_status: 'NOT_PAID',
+    source: 'WEBSITE',
+    duplicate_of_lead_id: null,
+    created_at: new Date().toISOString(),
+  };
+
+  // Prepend to leads list so it appears immediately on the dashboard
+  MOCK_LEADS.unshift(newLead);
+  logger.info(`✨ [New Lead Ingested] ${newLead.id}: ${newLead.name} (${newLead.enquiry_type}, ₹${newLead.potential_value})`);
+
+  // Forward notification to domain mailbox (GoDaddy / Titan SMTP or mock)
+  const notificationResult = await sendContactFormNotification({
+    name: newLead.name,
+    email: newLead.email,
+    phone: newLead.phone,
+    service: newLead.enquiry_type,
+    message: newLead.message,
+    leadId: newLead.id,
+  });
+
+  res.status(201).json({
+    success: true,
+    message: 'Thank you! Your inquiry has been received and forwarded to our team.',
+    lead_id: newLead.id,
+    lead: newLead,
+    delivery: {
+      recipient: notificationResult.recipient,
+      channel: notificationResult.channel,
+      status: notificationResult.success ? 'delivered' : 'failed'
+    }
   });
 });
 

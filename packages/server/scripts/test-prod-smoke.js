@@ -55,6 +55,18 @@ async function main() {
     const spaRoute = await fetch('http://127.0.0.1:5000/leads/RV-2001').then(r => r.text());
     console.log(`✅ GET /leads/RV-2001 (SPA fallback): ${spaRoute.length} bytes, has root div: ${spaRoute.includes('<div id="root"></div>')}`);
 
+    const contactRes = await fetch('http://127.0.0.1:5000/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Judge Evaluation Test',
+        email: 'judge@godaddy.hackathon',
+        service: 'Central AC maintenance',
+        message: 'Testing live website inquiry ingestion and domain mailbox notification.'
+      })
+    }).then(r => r.json());
+    console.log('✅ POST /api/contact:', contactRes.success ? 'PASSED' : 'FAILED', '| Created Lead:', contactRes.lead_id, '| Delivery Channel:', contactRes.delivery?.channel);
+
     console.log('\n================================================');
     console.log('🎉 ALL PRODUCTION SMOKE TESTS PASSED CLEANLY');
     console.log('================================================');

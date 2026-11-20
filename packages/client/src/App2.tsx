@@ -3,9 +3,10 @@ import DashboardEnhanced from './pages/DashboardEnhanced'
 import LeadDetail from './pages/LeadDetail'
 import ApprovalQueue from './pages/ApprovalQueue'
 import Analytics from './pages/Analytics'
+import Contact from './pages/Contact'
 import './App.css'
 
-type Page = 'dashboard' | 'approvals' | 'analytics' | 'lead-detail'
+type Page = 'dashboard' | 'approvals' | 'analytics' | 'lead-detail' | 'contact'
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard')
@@ -88,6 +89,17 @@ function App() {
             </svg>
             Analytics
           </button>
+
+          <button 
+            className={`nav-item ${currentPage === 'contact' ? 'active' : ''}`}
+            onClick={() => setCurrentPage('contact')}
+          >
+            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="2" y="4" width="16" height="12" rx="2"/>
+              <path d="M2 6l8 6 8-6"/>
+            </svg>
+            Contact Form
+          </button>
         </nav>
 
         <div className="sidebar-footer">
@@ -120,9 +132,22 @@ function App() {
 
       {/* Main Content */}
       <main className="main-content">
-        {currentPage === 'dashboard' && <DashboardEnhanced onViewLead={handleViewLead} />}
+        {currentPage === 'dashboard' && (
+          <DashboardEnhanced
+            onViewLead={handleViewLead}
+            onNavigateToContact={() => setCurrentPage('contact')}
+          />
+        )}
         {currentPage === 'approvals' && <ApprovalQueue onViewLead={handleViewLead} />}
         {currentPage === 'analytics' && <Analytics />}
+        {currentPage === 'contact' && (
+          <Contact
+            onNavigateToDashboard={handleBackToDashboard}
+            onInquirySubmitted={() => {
+              // Allows user to view lead on dashboard
+            }}
+          />
+        )}
         {currentPage === 'lead-detail' && selectedLeadId && (
           <LeadDetail leadId={selectedLeadId} onBack={handleBackToDashboard} />
         )}
