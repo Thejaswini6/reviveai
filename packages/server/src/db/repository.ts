@@ -72,6 +72,87 @@ export interface DataRepository {
 }
 
 // ==========================================
+// PURE ANALYTICS CALCULATION FUNCTION
+// ==========================================
+export function calculateAnalyticsSummary(leads: Lead[], actions: AgentAction[], businessId: string, dataProvider: string) {
+  const business = getBusinessProfile(businessId);
+  const activeLeads = leads.filter(l => !l.is_archived);
+  const total_leads = activeLeads.length;
+  const new_leads = activeLeads.filter(l => l.status === 'NEW').length;
+  const stale_leads = activeLeads.filter(l => l.status === 'STALE').length;
+  const contacted_leads = activeLeads.filter(l => l.status === 'CONTACTED').length;
+
+  // Confirmed Paid Conversions
+  const recoveredList = activeLeads.filter(
+    l => (l.status === 'RECOVERED' || l.status === 'CONVERTED') && l.payment_status === 'PAID'
+  );
+  const recovered_leads = recoveredList.length;
+  const confirmed_recovered_revenue = recoveredList.reduce((sum, l) => sum + (Number(l.potential_value) || 0), 0);
+
+  // Gross Open Pipeline: Active non-paid, non-declined, consented inquiries
+  const gross_open_pipeline_value = activeLeads
+    .filter(l => 
+      l.payment_status !== 'PAID' && 
+      l.status !== 'RECOVERED' && 
+      l.status !== 'CONVERTED' && 
+      l.status !== 'DECLINED' && 
+      l.contact_consent !== 'OPTED_OUT' && 
+      !l.duplicate_of_lead_id
+    )
+    .reduce((sum, l) => sum + (Number(l.potential_value) || 0), 0);
+
+  // Eligible Recovery Opportunity: Passing 10 safety rules
+  const eligibleList = activeLeads.filter(l => checkLeadEligibility(l as any).is_eligible);
+  const eligible_inactive_leads = eligibleList.length;
+  const eligible_recovery_opportunity = eligibleList.reduce((sum, l) => sum + (Number(l.potential_value) || 0), 0);
+
+  // Explicitly Separated Conversion Rates:
+  // 1. Lead Conversion Rate = (recovered_leads / total_leads) * 100
+  const lead_conversion_rate_percent = total_leads > 0 
+    ? Math.round((recovered_leads / total_leads) * 100 * 10) / 10 
+    : 0;
+
+  // 2. Revenue Recovery Rate = (confirmed_recovered_revenue / eligible_recovery_opportunity) * 100
+  const revenue_recovery_rate_percent = eligible_recovery_opportunity > 0
+    ? Math.round((confirmed_recovered_revenue / eligible_recovery_opportunity) * 100 * 10) / 10
+    : 0;
+
+  const pending_approvals = actions.filter(a => a.status === 'pending').length;
+  const emails_sent = actions.filter(a => a.status === 'approved').length;
+
+  return {
+    success: true,
+    business: {
+      id: business.id,
+      name: business.name,
+      industry: business.industry,
+      currency: business.currency.code,
+      currency_symbol: business.currency.symbol,
+    },
+    total_leads,
+    new_leads,
+    stale_leads,
+    contacted_leads,
+    recovered_leads,
+    eligible_inactive_leads,
+    // Clarified Three-Tier Revenue Architecture
+    gross_open_pipeline_value,
+    eligible_recovery_opportunity,
+    confirmed_recovered_revenue,
+    // Explicit conversion rate definitions
+    lead_conversion_rate_percent,
+    revenue_recovery_rate_percent,
+    // Legacy compatibility
+    recovery_rate_percent: lead_conversion_rate_percent,
+    total_revenue_at_risk: gross_open_pipeline_value,
+    recovered_revenue: confirmed_recovered_revenue,
+    pending_approvals,
+    emails_sent,
+    data_provider: dataProvider,
+  };
+}
+
+// ==========================================
 // 1. IN-MEMORY REPOSITORY (Default / Test)
 // ==========================================
 export class InMemoryRepository implements DataRepository {
@@ -214,81 +295,7 @@ export class InMemoryRepository implements DataRepository {
   }
 
   async getAnalyticsSummary(businessId: string): Promise<any> {
-    const business = getBusinessProfile(businessId);
-    const activeLeads = this.leads.filter(l => !l.is_archived);
-    const total_leads = activeLeads.length;
-    const new_leads = activeLeads.filter(l => l.status === 'NEW').length;
-    const stale_leads = activeLeads.filter(l => l.status === 'STALE').length;
-    const contacted_leads = activeLeads.filter(l => l.status === 'CONTACTED').length;
-
-    // Confirmed Paid Conversions
-    const recoveredList = activeLeads.filter(
-      l => (l.status === 'RECOVERED' || l.status === 'CONVERTED') && l.payment_status === 'PAID'
-    );
-    const recovered_leads = recoveredList.length;
-    const confirmed_recovered_revenue = recoveredList.reduce((sum, l) => sum + (l.potential_value || 0), 0);
-
-    // Gross Open Pipeline: Active non-paid, non-declined, consented inquiries
-    const gross_open_pipeline_value = activeLeads
-      .filter(l => 
-        l.payment_status !== 'PAID' && 
-        l.status !== 'RECOVERED' && 
-        l.status !== 'CONVERTED' && 
-        l.status !== 'DECLINED' && 
-        l.contact_consent !== 'OPTED_OUT' && 
-        !l.duplicate_of_lead_id
-      )
-      .reduce((sum, l) => sum + (l.potential_value || 0), 0);
-
-    // Eligible Recovery Opportunity: Passing 10 safety rules
-    const eligibleList = activeLeads.filter(l => checkLeadEligibility(l).is_eligible);
-    const eligible_inactive_leads = eligibleList.length;
-    const eligible_recovery_opportunity = eligibleList.reduce((sum, l) => sum + (l.potential_value || 0), 0);
-
-    // Explicitly Separated Conversion Rates:
-    // 1. Lead Conversion Rate = (recovered_leads / total_leads) * 100
-    const lead_conversion_rate_percent = total_leads > 0 
-      ? Math.round((recovered_leads / total_leads) * 100 * 10) / 10 
-      : 0;
-
-    // 2. Revenue Recovery Rate = (confirmed_recovered_revenue / eligible_recovery_opportunity) * 100
-    const revenue_recovery_rate_percent = eligible_recovery_opportunity > 0
-      ? Math.round((confirmed_recovered_revenue / eligible_recovery_opportunity) * 100 * 10) / 10
-      : 0;
-
-    const pending_approvals = this.actions.filter(a => a.status === 'pending').length;
-    const emails_sent = this.actions.filter(a => a.status === 'approved').length;
-
-    return {
-      success: true,
-      business: {
-        id: business.id,
-        name: business.name,
-        industry: business.industry,
-        currency: business.currency.code,
-        currency_symbol: business.currency.symbol,
-      },
-      total_leads,
-      new_leads,
-      stale_leads,
-      contacted_leads,
-      recovered_leads,
-      eligible_inactive_leads,
-      // Clarified Three-Tier Revenue Architecture
-      gross_open_pipeline_value,
-      eligible_recovery_opportunity,
-      confirmed_recovered_revenue,
-      // Explicit conversion rate definitions
-      lead_conversion_rate_percent,
-      revenue_recovery_rate_percent,
-      // Legacy compatibility
-      recovery_rate_percent: lead_conversion_rate_percent,
-      total_revenue_at_risk: gross_open_pipeline_value,
-      recovered_revenue: confirmed_recovered_revenue,
-      pending_approvals,
-      emails_sent,
-      data_provider: 'in_memory_reconciled',
-    };
+    return calculateAnalyticsSummary(this.leads, this.actions, businessId, 'in_memory_reconciled');
   }
 }
 
@@ -685,9 +692,8 @@ export class MySQLRepository implements DataRepository {
 
   async getAnalyticsSummary(businessId: string): Promise<any> {
     const { leads } = await this.getLeads();
-    const inMem = new InMemoryRepository();
-    // Use the exact calculated logic on the leads
-    return inMem.getAnalyticsSummary(businessId);
+    const actions = await this.getAgentActions();
+    return calculateAnalyticsSummary(leads, actions, businessId, 'godaddy_hosted_mysql');
   }
 }
 
