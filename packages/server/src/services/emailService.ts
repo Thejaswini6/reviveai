@@ -57,7 +57,7 @@ export async function sendRecoveryOutreach(options: {
       logger.warn('⚠️ SMTP requested but credentials incomplete. Falling back to simulated log.');
     } else {
       try {
-        const fromAddress = ENV.SMTP_FROM || ENV.SMTP_USER || 'support@coolcare.invalid';
+        const fromAddress = ENV.SMTP_FROM || ENV.SMTP_USER || 'thejaswini@reviveaiapp.com';
         const info = await transporter.sendMail({
           from: `"CoolCare AC Services" <${fromAddress}>`,
           to,
@@ -116,7 +116,7 @@ export async function sendContactFormNotification(inquiry: {
   leadId: string;
 }): Promise<EmailResult> {
   const { name, email, phone, service, message, leadId } = inquiry;
-  const businessMailbox = ENV.SMTP_FROM || ENV.SMTP_USER || 'hello@yourdomain.com';
+  const businessMailbox = ENV.SMTP_FROM || ENV.SMTP_USER || 'thejaswini@reviveaiapp.com';
   const subject = `[New Website Lead ${leadId}] Inquiry from ${name} - ${service || 'General Service'}`;
 
   if (ENV.EMAIL_ADAPTER === 'smtp') {

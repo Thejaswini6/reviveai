@@ -90,7 +90,7 @@ export default function Contact({ onInquirySubmitted, onNavigateToDashboard }: C
           Customer Service Inquiry
         </h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.5 }}>
-          Submit a new customer inquiry for <strong>CoolCare AC Services</strong>. Messages are ingested as real-time leads and forwarded directly to your GoDaddy domain mailbox.
+          Submit a new customer inquiry for <strong>CoolCare AC Services</strong>. Messages are ingested as real-time leads and forwarded directly to domain mailbox <strong>thejaswini@reviveaiapp.com</strong>.
         </p>
       </div>
 
@@ -107,7 +107,7 @@ export default function Contact({ onInquirySubmitted, onNavigateToDashboard }: C
       }}>
         <span style={{ fontSize: '1.5rem' }}>📬</span>
         <div style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>
-          <strong>GoDaddy Hackathon Requirement (Slide 10, 12 & 18):</strong> This contact form connects to your domain email (via Titan/GoDaddy SMTP). Submissions notify the domain mailbox and automatically populate the ReviveAI dashboard for AI revenue recovery tracking.
+          <strong>GoDaddy Hackathon Requirement (Slide 10, 12 & 18):</strong> This contact form connects to your domain email (<code>thejaswini@reviveaiapp.com</code> via Titan/GoDaddy SMTP). Submissions notify the domain mailbox and automatically populate the ReviveAI dashboard for AI revenue recovery tracking.
         </div>
       </div>
 
@@ -125,7 +125,7 @@ export default function Contact({ onInquirySubmitted, onNavigateToDashboard }: C
             Inquiry Successfully Received & Dispatched!
           </h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', maxWidth: '500px', margin: '0 auto 1.5rem auto' }}>
-            Lead <strong>{submittedLead.id}</strong> has been created with status <span style={{ background: '#dbeafe', color: '#1e40af', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>NEW</span>. A notification email was forwarded to your domain mailbox.
+            Lead <strong>{submittedLead.id}</strong> has been created with status <span style={{ background: '#dbeafe', color: '#1e40af', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>NEW</span>. A notification email was forwarded to your GoDaddy domain mailbox (<strong>thejaswini@reviveaiapp.com</strong>).
           </p>
 
           <div style={{

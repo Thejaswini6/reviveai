@@ -49,7 +49,7 @@ const EnvSchema = z.object({
   SMTP_PASSWORD: z.string().optional(),
   SMTP_FROM: z.string().optional(),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug', 'trace']).default('info'),
-  CORS_ORIGIN: z.string().default('http://localhost:5173,http://localhost:5000'),
+  CORS_ORIGIN: z.string().default('http://localhost:5173,http://localhost:5000,https://reviveaiapp.com,https://www.reviveaiapp.com'),
   DEFAULT_BUSINESS_ID: z.string().default('business-001'),
   DEFAULT_BUSINESS_NAME: z.string().default('CoolCare AC Services'),
 });
