@@ -10,15 +10,17 @@ import { initDb, closeDb } from './db/init.js';
 import { ENV } from './env.js';
 import { logger } from './utils/logger.js';
 import { MOCK_LEADS, MOCK_AGENT_ACTIONS, MOCK_TIMELINE_EVENTS } from './data/mockData.js';
-import leadsRouter from './api/leads.js';
-import analyticsRouter from './api/analytics.js';
+import { checkLeadEligibility, validateActionApproval } from './services/eligibility.js';
+import { getBusinessProfile } from './services/businessConfig.js';
+import { generateIndustryAdaptiveAnalysis } from './services/agentPrompts.js';
+import { executeRecoveryAnalysis } from './services/recoveryAgent.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 
-// Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Middleware — body size limit prevents large-payload DoS attacks
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
 // CORS
 app.use((req, res, next) => {
@@ -56,6 +58,16 @@ app.get('/api', (req, res) => {
   });
 });
 
+// Get business configuration profile
+app.get('/api/business/profile', (req, res) => {
+  const businessId = (req.query.business_id as string) || ENV.DEFAULT_BUSINESS_ID || 'business-001';
+  const profile = getBusinessProfile(businessId);
+  res.json({
+    success: true,
+    profile,
+  });
+});
+
 // Get all leads (with optional status filter)
 app.get('/api/leads', (req, res) => {
   const { status } = req.query;
@@ -84,96 +96,82 @@ app.get('/api/leads/:id', (req, res) => {
   }
   
   const timeline = MOCK_TIMELINE_EVENTS[id] || [];
+  const eligibility = checkLeadEligibility(lead);
   
   res.json({
+    success: true,
     lead,
     timeline,
+    eligibility,
     interactions: [],
     emails: [],
     outcomes: []
   });
 });
 
-// Trigger AI analysis on a lead
-app.post('/api/agent/analyze-lead/:lead_id', (req, res) => {
+// Trigger AI recovery analysis on a lead using Claude Agent (or deterministic simulated agent in mock mode)
+app.post('/api/agent/analyze-lead/:lead_id', async (req, res) => {
   const { lead_id } = req.params;
+  const { force } = req.body || {};
   const lead = MOCK_LEADS.find(l => l.id === lead_id);
   
   if (!lead) {
     return res.status(404).json({ success: false, error: 'Lead not found' });
   }
   
-  // Check if lead is eligible for analysis
-  if (lead.contact_consent === 'OPTED_OUT') {
+  // Backend Eligibility & Business Safety Check (Always enforced before agent execution)
+  const eligibility = checkLeadEligibility(lead);
+  if (!eligibility.is_eligible) {
     return res.status(400).json({ 
       success: false, 
-      error: 'Cannot analyze opted-out lead' 
+      error: 'Lead is ineligible for recovery outreach',
+      reasons: eligibility.reasons,
+      recommended_handling: eligibility.recommended_handling,
+      flags: eligibility.flags
     });
   }
   
-  if (lead.status === 'DECLINED') {
-    return res.status(400).json({ 
-      success: false, 
-      error: 'Cannot analyze declined lead' 
-    });
+  // Check if pending action already exists for this lead (unless force requested)
+  if (!force) {
+    const existingAction = MOCK_AGENT_ACTIONS.find(a => a.lead_id === lead_id && a.status === 'pending');
+    if (existingAction) {
+      return res.json({
+        success: true,
+        action_id: existingAction.id,
+        status: existingAction.status,
+        message: 'Analysis already exists for this lead',
+        eligibility,
+        analysis: JSON.parse(existingAction.analysis_json),
+        trace: existingAction.trace,
+        mode: existingAction.mode,
+        model: existingAction.model,
+        token_usage: existingAction.token_usage
+      });
+    }
   }
-  
-  // Check if action already exists for this lead
-  const existingAction = MOCK_AGENT_ACTIONS.find(a => a.lead_id === lead_id);
-  
-  if (existingAction) {
-    return res.json({
+
+  try {
+    const result = await executeRecoveryAnalysis(lead_id);
+    res.json({
       success: true,
-      action_id: existingAction.id,
-      status: existingAction.status,
-      message: 'Analysis already exists for this lead',
-      analysis: JSON.parse(existingAction.analysis_json)
+      action_id: result.action_id,
+      status: result.status,
+      message: 'Analysis complete. Approval required.',
+      eligibility: result.eligibility,
+      analysis: result.analysis,
+      trace: result.trace,
+      mode: result.mode,
+      model: result.model,
+      token_usage: result.token_usage,
+      duration_ms: result.duration_ms
+    });
+  } catch (err: any) {
+    logger.error(`Error analyzing lead ${lead_id}:`, err);
+    res.status(500).json({
+      success: false,
+      error: err.message || 'Failed to analyze lead'
     });
   }
-  
-  // Create new mock action
-  const newAction = {
-    id: `action-${Date.now()}`,
-    lead_id: lead.id,
-    lead_name: lead.name,
-    action_type: 'analysis',
-    status: 'pending',
-    analysis_json: JSON.stringify({
-      lead_id: lead.id,
-      priority: 'medium',
-      customer_intent: `Customer interested in ${lead.enquiry_type}`,
-      likely_reason_for_inactivity: 'Customer may be comparing options or waiting for response',
-      evidence: [
-        `Inquiry received ${Math.floor((Date.now() - new Date(lead.received_at).getTime()) / (1000 * 60 * 60 * 24))} days ago`,
-        `Potential value: ₹${lead.potential_value}`,
-        `No follow-ups yet`
-      ],
-      uncertainty: 'Customer interest level unknown',
-      recommended_action: 'email',
-      suggested_channel: 'email',
-      email_subject: `Follow-up: Your ${lead.enquiry_type} Inquiry`,
-      email_body: `Hi ${lead.name.split(' ')[0]},\n\nI wanted to follow up on your recent inquiry about ${lead.enquiry_type}.\n\nWe'd love to help you with this. Our team is ready to assist.\n\nCould we schedule a convenient time to discuss your requirements?\n\nBest regards,\nCoolCare AC Services`,
-      requires_human_approval: true
-    }),
-    generated_message: `Hi ${lead.name.split(' ')[0]},\n\nI wanted to follow up on your recent inquiry about ${lead.enquiry_type}.\n\nWe'd love to help you with this. Our team is ready to assist.\n\nCould we schedule a convenient time to discuss your requirements?\n\nBest regards,\nCoolCare AC Services`,
-    approval_requested_at: new Date().toISOString(),
-    approved_by: null,
-    approved_at: null,
-    rejection_reason: null,
-    executed_at: null,
-    error_message: null,
-    created_at: new Date().toISOString()
-  };
-  
-  MOCK_AGENT_ACTIONS.push(newAction as any);
-  
-  res.json({
-    success: true,
-    action_id: newAction.id,
-    status: 'pending',
-    message: 'Analysis complete. Approval required.',
-    analysis: JSON.parse(newAction.analysis_json)
-  });
 });
 
 // Get pending agent actions
@@ -192,13 +190,27 @@ app.get('/api/agent/actions', (req, res) => {
   });
 });
 
-// Approve an action
+// Approve an action (re-checks safety rules before execution)
 app.post('/api/agent/actions/:id/approve', (req, res) => {
   const { id } = req.params;
   const action = MOCK_AGENT_ACTIONS.find(a => a.id === id);
   
   if (!action) {
     return res.status(404).json({ success: false, error: 'Action not found' });
+  }
+
+  // Pre-execution safety re-check
+  const lead = MOCK_LEADS.find(l => l.id === action.lead_id);
+  if (!lead) {
+    return res.status(404).json({ success: false, error: 'Target lead not found for this action' });
+  }
+
+  const approvalCheck = validateActionApproval(lead);
+  if (!approvalCheck.allowed) {
+    return res.status(400).json({
+      success: false,
+      error: approvalCheck.error || 'Approval blocked by business safety policy'
+    });
   }
   
   // Update action status
@@ -208,12 +220,9 @@ app.post('/api/agent/actions/:id/approve', (req, res) => {
   action.executed_at = new Date().toISOString();
   
   // Update lead status
-  const lead = MOCK_LEADS.find(l => l.id === action.lead_id);
-  if (lead) {
-    lead.status = 'CONTACTED';
-    lead.last_contacted_at = new Date().toISOString();
-    lead.follow_up_count += 1;
-  }
+  lead.status = 'CONTACTED';
+  lead.last_contacted_at = new Date().toISOString();
+  lead.follow_up_count += 1;
   
   res.json({
     success: true,
@@ -221,7 +230,9 @@ app.post('/api/agent/actions/:id/approve', (req, res) => {
     email_log: {
       id: `email-${Date.now()}`,
       status: 'sent',
-      sent_at: new Date().toISOString()
+      sent_at: new Date().toISOString(),
+      recipient: lead.email,
+      channel: 'email (simulated)'
     }
   });
 });
@@ -245,43 +256,77 @@ app.post('/api/agent/actions/:id/reject', (req, res) => {
   });
 });
 
-// Analytics summary
+// Trustworthy Analytics Summary with Industry-Independent Metrics
 app.get('/api/analytics/summary', (req, res) => {
+  const businessId = (req.query.business_id as string) || ENV.DEFAULT_BUSINESS_ID || 'business-001';
+  const business = getBusinessProfile(businessId);
+
   const total_leads = MOCK_LEADS.length;
   const new_leads = MOCK_LEADS.filter(l => l.status === 'NEW').length;
   const stale_leads = MOCK_LEADS.filter(l => l.status === 'STALE').length;
   const contacted_leads = MOCK_LEADS.filter(l => l.status === 'CONTACTED').length;
-  const recovered_leads = MOCK_LEADS.filter(l => l.status === 'RECOVERED').length;
   
-  const total_revenue_at_risk = MOCK_LEADS
-    .filter(l => l.status === 'STALE' || l.status === 'NEW')
-    .reduce((sum, l) => sum + l.potential_value, 0);
+  // 1. Confirmed Recovered Leads & Revenue (Only explicitly confirmed paid conversions)
+  const recoveredLeadsList = MOCK_LEADS.filter(
+    l => (l.status === 'RECOVERED' || l.status === 'CONVERTED') && l.payment_status === 'PAID'
+  );
+  const recovered_leads = recoveredLeadsList.length;
+  const confirmed_recovered_revenue = recoveredLeadsList.reduce((sum, l) => sum + (l.potential_value || 0), 0);
+
+  // 2. Gross Open Pipeline Value: Active inquiries excluding already paid, declined, opted-out, & duplicates
+  const gross_open_pipeline_value = MOCK_LEADS
+    .filter(l => 
+      l.payment_status !== 'PAID' && 
+      l.status !== 'RECOVERED' && 
+      l.status !== 'CONVERTED' && 
+      l.status !== 'DECLINED' && 
+      l.contact_consent !== 'OPTED_OUT' && 
+      !l.duplicate_of_lead_id
+    )
+    .reduce((sum, l) => sum + (l.potential_value || 0), 0);
   
-  const recovered_revenue = MOCK_LEADS
-    .filter(l => l.status === 'RECOVERED' && l.payment_status === 'PAID')
-    .reduce((sum, l) => sum + l.potential_value, 0);
+  // 3. Eligible Recovery Opportunity: Strictly inactive leads passing ALL safety rules (consent confirmed, non-duplicate, non-cooldown, non-complaint)
+  const eligibleLeadsList = MOCK_LEADS.filter(l => checkLeadEligibility(l).is_eligible);
+  const eligible_inactive_leads = eligibleLeadsList.length;
+  const eligible_recovery_opportunity = eligibleLeadsList.reduce((sum, l) => sum + (l.potential_value || 0), 0);
   
   const recovery_rate_percent = total_leads > 0 
-    ? (recovered_leads / total_leads) * 100 
+    ? Math.round((recovered_leads / total_leads) * 100 * 10) / 10 
     : 0;
   
   const pending_approvals = MOCK_AGENT_ACTIONS.filter(a => a.status === 'pending').length;
   const emails_sent = MOCK_AGENT_ACTIONS.filter(a => a.status === 'approved').length;
   
   res.json({
+    success: true,
+    business: {
+      id: business.id,
+      name: business.name,
+      industry: business.industry,
+      currency: business.currency.code,
+      currency_symbol: business.currency.symbol,
+    },
     total_leads,
     new_leads,
     stale_leads,
     contacted_leads,
     recovered_leads,
-    total_revenue_at_risk,
-    recovered_revenue,
+    eligible_inactive_leads,
+    // Clarified Three-Tier Revenue Architecture:
+    gross_open_pipeline_value,
+    eligible_recovery_opportunity,
+    confirmed_recovered_revenue,
+    // Maintained UI Compatibility Keys:
+    total_revenue_at_risk: gross_open_pipeline_value,
+    recovered_revenue: confirmed_recovered_revenue,
     recovery_rate_percent,
     pending_approvals,
-    emails_sent
-// Mount routers
-app.use('/api', leadsRouter);
-app.use('/api/analytics', analyticsRouter);
+    emails_sent,
+    data_provider: 'canonical_in_memory_reconciled'
+  });
+});
+
+// Mount agent catch-all (Phase 4-5 placeholder for other agent endpoints)
 app.use('/api/agent', (req, res) => {
   res.status(501).json({
     success: false,
@@ -327,8 +372,12 @@ app.use((req, res) => {
 async function start() {
   try {
     // Initialize database
-    await initDb();
-    logger.info('✅ Database initialized');
+    if (!ENV.MOCK_MODE) {
+      await initDb();
+      logger.info('✅ Database initialized');
+    } else {
+      logger.info('🤖 Mock mode active - using in-memory mock data store');
+    }
 
     // Start server
     const port = ENV.PORT;

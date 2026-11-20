@@ -4,13 +4,40 @@
  */
 
 import { z } from 'zod';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Robust multi-location .env resolution:
+// Resolves correctly whether launched from monorepo root, packages/server, or any subdirectory
+const candidateEnvPaths = [
+  path.resolve(__dirname, '../.env'),                // packages/server/.env (from src/ or dist/)
+  path.resolve(__dirname, '../../.env'),               // monorepo root .env
+  path.resolve(process.cwd(), 'packages/server/.env'), // cwd is monorepo root
+  path.resolve(process.cwd(), '.env'),                 // cwd has .env directly
+];
+
+if (typeof process.loadEnvFile === 'function') {
+  for (const envPath of candidateEnvPaths) {
+    if (fs.existsSync(envPath)) {
+      try {
+        process.loadEnvFile(envPath);
+      } catch {
+        // Silently skip if file is unreadable or malformed
+      }
+    }
+  }
+}
 
 const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'production']).default('development'),
   PORT: z.coerce.number().default(5000),
   DATABASE_URL: z.string().default('./data/reviveai.db'),
   ANTHROPIC_API_KEY: z.string().optional(),
-  ANTHROPIC_MODEL: z.string().default('claude-haiku-4-5'),
+  ANTHROPIC_MODEL: z.string().default('claude-sonnet-5-5'),
   MOCK_MODE: z
     .string()
     .transform((v) => v === 'true' || v === '1')

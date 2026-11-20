@@ -25,7 +25,7 @@ function Analytics() {
   const fetchAnalytics = async () => {
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:5000/api/analytics/summary')
+      const res = await fetch('/api/analytics/summary')
       const analyticsData = await res.json()
       setData(analyticsData)
     } catch (error) {

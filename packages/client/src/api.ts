@@ -3,7 +3,7 @@
  * Handles all communication with the Express server
  */
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = '/api';
 
 export interface Lead {
   id: string;
@@ -16,6 +16,7 @@ export interface Lead {
   last_contacted_at?: string;
   contact_consent: string;
   payment_status: string;
+  source?: string;
 }
 
 export interface Analytics {
@@ -23,20 +24,39 @@ export interface Analytics {
   new_leads: number;
   stale_leads: number;
   recovered_leads: number;
-  declined_leads: number;
-  opted_out_leads: number;
+  declined_leads?: number;
+  opted_out_leads?: number;
+  gross_open_pipeline_value?: number;
+  eligible_recovery_opportunity?: number;
+  confirmed_recovered_revenue?: number;
+  total_revenue_at_risk: number;
+  recovered_revenue: number;
   recovery_rate_percent: number;
+  pending_approvals: number;
+  emails_sent: number;
+  eligible_inactive_leads?: number;
+  business?: {
+    id: string;
+    name: string;
+    industry: string;
+    currency: string;
+    currency_symbol: string;
+  };
 }
 
 /**
  * Fetch all leads
  */
-export async function getLeads(limit = 50, offset = 0): Promise<{ leads: Lead[]; total: number }> {
+export async function getLeads(limit = 50, offset = 0, status?: string): Promise<{ leads: Lead[]; total: number }> {
   try {
-    const response = await fetch(`${API_BASE}/leads?limit=${limit}&offset=${offset}`);
+    const statusParam = status && status !== 'all' ? `&status=${status}` : '';
+    const response = await fetch(`${API_BASE}/leads?limit=${limit}&offset=${offset}${statusParam}`);
     if (!response.ok) throw new Error('Failed to fetch leads');
     const data = await response.json();
-    return data.data;
+    return {
+      leads: data.leads || data.data?.leads || [],
+      total: data.total ?? data.data?.total ?? 0,
+    };
   } catch (error) {
     console.error('Error fetching leads:', error);
     return { leads: [], total: 0 };
@@ -44,14 +64,14 @@ export async function getLeads(limit = 50, offset = 0): Promise<{ leads: Lead[];
 }
 
 /**
- * Fetch single lead with history
+ * Fetch single lead with history and eligibility
  */
 export async function getLead(leadId: string): Promise<any> {
   try {
     const response = await fetch(`${API_BASE}/leads/${leadId}`);
     if (!response.ok) throw new Error('Failed to fetch lead');
     const data = await response.json();
-    return data.data;
+    return data;
   } catch (error) {
     console.error('Error fetching lead:', error);
     return null;
@@ -63,10 +83,10 @@ export async function getLead(leadId: string): Promise<any> {
  */
 export async function getStaleleads(): Promise<Lead[]> {
   try {
-    const response = await fetch(`${API_BASE}/internal/leads/stale`);
+    const response = await fetch(`${API_BASE}/leads?status=STALE`);
     if (!response.ok) throw new Error('Failed to fetch stale leads');
     const data = await response.json();
-    return data.data.stale_leads;
+    return data.leads || data.data?.leads || [];
   } catch (error) {
     console.error('Error fetching stale leads:', error);
     return [];
@@ -81,7 +101,7 @@ export async function getAnalytics(): Promise<Analytics> {
     const response = await fetch(`${API_BASE}/analytics/summary`);
     if (!response.ok) throw new Error('Failed to fetch analytics');
     const data = await response.json();
-    return data.data;
+    return data.data || data;
   } catch (error) {
     console.error('Error fetching analytics:', error);
     return {
@@ -89,9 +109,11 @@ export async function getAnalytics(): Promise<Analytics> {
       new_leads: 0,
       stale_leads: 0,
       recovered_leads: 0,
-      declined_leads: 0,
-      opted_out_leads: 0,
+      total_revenue_at_risk: 0,
+      recovered_revenue: 0,
       recovery_rate_percent: 0,
+      pending_approvals: 0,
+      emails_sent: 0,
     };
   }
 }

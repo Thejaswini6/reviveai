@@ -14,12 +14,30 @@ interface AgentAction {
   analysis_json: string
   generated_message: string
   approval_requested_at: string
+  mode?: string
+  model?: string
+  token_usage?: {
+    input_tokens: number
+    output_tokens: number
+    total_tokens: number
+    estimated_cost_usd: number
+  }
+  trace?: Array<{
+    step_number: number
+    type: string
+    tool_name?: string
+    description: string
+    duration_ms?: number
+    input?: any
+    output?: any
+  }>
 }
 
 function ApprovalQueue({ onViewLead }: ApprovalQueueProps) {
   const [actions, setActions] = useState<AgentAction[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedAction, setSelectedAction] = useState<AgentAction | null>(null)
+  const [expandedTraceActionId, setExpandedTraceActionId] = useState<string | null>(null)
   const [processingAction, setProcessingAction] = useState<string | null>(null)
 
   useEffect(() => {
@@ -29,7 +47,7 @@ function ApprovalQueue({ onViewLead }: ApprovalQueueProps) {
   const fetchActions = async () => {
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:5000/api/agent/actions?status=pending')
+      const res = await fetch('/api/agent/actions?status=pending')
       const data = await res.json()
       setActions(data.actions || [])
     } catch (error) {
@@ -46,7 +64,7 @@ function ApprovalQueue({ onViewLead }: ApprovalQueueProps) {
 
     setProcessingAction(actionId)
     try {
-      const res = await fetch(`http://localhost:5000/api/agent/actions/${actionId}/approve`, {
+      const res = await fetch(`/api/agent/actions/${actionId}/approve`, {
         method: 'POST'
       })
       const data = await res.json()
@@ -72,7 +90,7 @@ function ApprovalQueue({ onViewLead }: ApprovalQueueProps) {
 
     setProcessingAction(actionId)
     try {
-      const res = await fetch(`http://localhost:5000/api/agent/actions/${actionId}/reject`, {
+      const res = await fetch(`/api/agent/actions/${actionId}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason })
@@ -156,9 +174,17 @@ function ApprovalQueue({ onViewLead }: ApprovalQueueProps) {
               <div key={action.id} className="approval-card">
                 <div className="approval-header">
                   <div>
-                    <h3>{action.lead_name}</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
+                      <h3>{action.lead_name}</h3>
+                      <span className={`mode-badge ${action.mode === 'real_claude' ? 'mode-real' : 'mode-simulated'}`} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem' }}>
+                        {action.mode === 'real_claude' ? `⚡ REAL CLAUDE (${action.model || 'claude-sonnet-5-5'})` : '🎭 SIMULATED MOCK'}
+                      </span>
+                    </div>
                     <p className="approval-meta">
                       Requested {formatDateTime(action.approval_requested_at)}
+                      {action.token_usage && (
+                        <span> • {action.token_usage.total_tokens} tokens (${action.token_usage.estimated_cost_usd?.toFixed(4) || '0.0000'} USD)</span>
+                      )}
                     </p>
                   </div>
                   <button 
@@ -189,6 +215,45 @@ function ApprovalQueue({ onViewLead }: ApprovalQueueProps) {
                       <label>Recommended Action</label>
                       <p>{analysis.recommended_action}</p>
                     </div>
+                  </div>
+                )}
+
+                {/* Tool Execution Trace Accordion */}
+                {action.trace && action.trace.length > 0 && (
+                  <div style={{ margin: '1rem 0', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', overflow: 'hidden' }}>
+                    <div 
+                      style={{ padding: '0.6rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', background: 'rgba(59, 130, 246, 0.05)' }}
+                      onClick={() => setExpandedTraceActionId(expandedTraceActionId === action.id ? null : action.id)}
+                    >
+                      <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                        🔍 Agent Tool Trace ({action.trace.length} tool calls)
+                      </span>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 500 }}>
+                        {expandedTraceActionId === action.id ? 'Hide Trace ▲' : 'Inspect Tool Trace ▼'}
+                      </span>
+                    </div>
+                    {expandedTraceActionId === action.id && (
+                      <div style={{ padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', borderTop: '1px solid var(--border)' }}>
+                        {action.trace.map(step => (
+                          <div key={step.step_number} style={{ fontSize: '0.8rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <span style={{ background: '#1e293b', color: '#f8fafc', padding: '0.15rem 0.4rem', borderRadius: '3px', fontSize: '0.7rem', fontWeight: 700 }}>
+                              #{step.step_number}
+                            </span>
+                            <span style={{ fontFamily: 'monospace', color: '#2563eb', background: '#eff6ff', padding: '0.15rem 0.4rem', borderRadius: '3px', fontWeight: 600 }}>
+                              {step.tool_name || step.type}
+                            </span>
+                            <span style={{ color: 'var(--text-secondary)', flex: 1, minWidth: '200px' }}>
+                              {step.description}
+                            </span>
+                            {step.duration_ms !== undefined && (
+                              <span style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem' }}>
+                                {step.duration_ms} ms
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 

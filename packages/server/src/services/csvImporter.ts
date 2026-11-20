@@ -15,9 +15,7 @@ const CsvLeadSchema = z.object({
   customer_name: z.string().min(1, 'customer_name cannot be empty').max(100),
   customer_email: z.string().email('Invalid customer_email format'),
   customer_phone: z.string().regex(/^\+91-\d{5}-\d{5}$/, 'Invalid phone format. Expected +91-XXXXX-NNNNN'),
-  service_type: z.enum(['AC repair', 'AC servicing', 'AC installation'], {
-    errorMap: () => ({ message: 'Invalid service_type. Must be: AC repair, AC servicing, or AC installation' }),
-  }),
+  service_type: z.string().min(1, 'service_type cannot be empty').max(100),
   enquiry_text: z.string().min(1, 'enquiry_text cannot be empty').max(500),
   estimated_value_inr: z
     .string()

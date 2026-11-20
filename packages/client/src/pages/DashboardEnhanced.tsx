@@ -15,6 +15,7 @@ interface Lead {
   last_contacted_at: string | null
   follow_up_count: number
   score?: number
+  source?: string
 }
 
 interface Summary {

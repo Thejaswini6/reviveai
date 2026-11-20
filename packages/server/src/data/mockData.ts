@@ -40,6 +40,10 @@ export interface AgentAction {
   executed_at: string | null
   error_message: string | null
   created_at: string
+  trace?: any[]
+  mode?: string
+  model?: string
+  token_usage?: any
 }
 
 // Helper to get date N days ago
@@ -61,7 +65,218 @@ const hoursAgo = (hours: number): string => {
  * Total: 25 leads covering various scenarios
  */
 export const MOCK_LEADS: Lead[] = [
-  // ===== HIGH-VALUE OPPORTUNITIES (Stale, Need Immediate Attention) =====
+  // ===== CANONICAL HACKATHON BENCHMARK LEADS (RV-1001 to RV-1010) =====
+  {
+    id: 'RV-1001',
+    business_id: 'business-001',
+    name: 'Rahul Sharma',
+    email: 'rahul.demo@example.invalid',
+    phone: '+91-00000-00001',
+    message: 'My split AC is running but not cooling. Can someone visit this week?',
+    enquiry_type: 'AC repair',
+    potential_value: 4000,
+    status: 'NEW',
+    received_at: daysAgo(5),
+    last_contacted_at: null,
+    follow_up_count: 0,
+    contact_consent: 'CONSENTED',
+    preferred_channel: 'email',
+    booking_status: 'NOT_BOOKED',
+    payment_status: 'NOT_PAID',
+    source: 'WEBSITE',
+    duplicate_of_lead_id: null,
+    created_at: daysAgo(5)
+  },
+  {
+    id: 'RV-1002',
+    business_id: 'business-001',
+    name: 'Priya Nair',
+    email: 'priya.demo@example.invalid',
+    phone: '+91-00000-00002',
+    message: 'Please share the quote for a full AC service and confirm whether gas pressure checking is included.',
+    enquiry_type: 'AC servicing',
+    potential_value: 8500,
+    status: 'QUOTE_SENT',
+    received_at: daysAgo(6),
+    last_contacted_at: daysAgo(5),
+    follow_up_count: 1,
+    contact_consent: 'CONSENTED',
+    preferred_channel: 'email',
+    booking_status: 'NOT_BOOKED',
+    payment_status: 'NOT_PAID',
+    source: 'PHONE',
+    duplicate_of_lead_id: null,
+    created_at: daysAgo(6)
+  },
+  {
+    id: 'RV-1003',
+    business_id: 'business-001',
+    name: 'Amit Verma',
+    email: 'amit.demo@example.invalid',
+    phone: '+91-00000-00003',
+    message: 'I want to install an AC in the bedroom. I have selected a unit but need an installation slot.',
+    enquiry_type: 'AC installation',
+    potential_value: 2500,
+    status: 'BOOKING_PENDING',
+    received_at: daysAgo(4),
+    last_contacted_at: daysAgo(4),
+    follow_up_count: 1,
+    contact_consent: 'CONSENTED',
+    preferred_channel: 'email',
+    booking_status: 'PENDING',
+    payment_status: 'NOT_PAID',
+    source: 'WEBSITE',
+    duplicate_of_lead_id: null,
+    created_at: daysAgo(4)
+  },
+  {
+    id: 'RV-1004',
+    business_id: 'business-001',
+    name: 'Neha Iyer',
+    email: 'neha.demo@example.invalid',
+    phone: '+91-00000-00004',
+    message: 'The AC is making a rattling noise. Please call me after 6 PM to discuss a visit.',
+    enquiry_type: 'AC repair',
+    potential_value: 5000,
+    status: 'CALLBACK_REQUESTED',
+    received_at: daysAgo(2),
+    last_contacted_at: daysAgo(2),
+    follow_up_count: 0,
+    contact_consent: 'CONSENTED',
+    preferred_channel: 'phone',
+    booking_status: 'NOT_BOOKED',
+    payment_status: 'NOT_PAID',
+    source: 'PHONE',
+    duplicate_of_lead_id: null,
+    created_at: daysAgo(2)
+  },
+  {
+    id: 'RV-1005',
+    business_id: 'business-001',
+    name: 'Sanjay Kulkarni',
+    email: 'sanjay.demo@example.invalid',
+    phone: '+91-00000-00005',
+    message: 'Thanks for the estimate. I have decided not to proceed at this time.',
+    enquiry_type: 'AC repair',
+    potential_value: 3000,
+    status: 'DECLINED',
+    received_at: daysAgo(5),
+    last_contacted_at: daysAgo(4),
+    follow_up_count: 1,
+    contact_consent: 'CONSENTED',
+    preferred_channel: 'email',
+    booking_status: 'NOT_BOOKED',
+    payment_status: 'NOT_PAID',
+    source: 'WEBSITE',
+    duplicate_of_lead_id: null,
+    created_at: daysAgo(5)
+  },
+  {
+    id: 'RV-1006',
+    business_id: 'business-001',
+    name: 'Meera Joshi',
+    email: 'meera.demo@example.invalid',
+    phone: '+91-00000-00006',
+    message: 'Please send the annual maintenance package details.',
+    enquiry_type: 'AC servicing',
+    potential_value: 6000,
+    status: 'QUOTE_SENT',
+    received_at: daysAgo(7),
+    last_contacted_at: daysAgo(6),
+    follow_up_count: 1,
+    contact_consent: 'OPTED_OUT',
+    preferred_channel: 'email',
+    booking_status: 'NOT_BOOKED',
+    payment_status: 'NOT_PAID',
+    source: 'WEBSITE',
+    duplicate_of_lead_id: null,
+    created_at: daysAgo(7)
+  },
+  {
+    id: 'RV-1007',
+    business_id: 'business-001',
+    name: 'Arjun Rao',
+    email: 'arjun.demo@example.invalid',
+    phone: '+91-00000-00007',
+    message: 'The technician completed the repair. Thank you.',
+    enquiry_type: 'AC repair',
+    potential_value: 7000,
+    status: 'CONVERTED',
+    received_at: daysAgo(7),
+    last_contacted_at: daysAgo(3),
+    follow_up_count: 2,
+    contact_consent: 'CONSENTED',
+    preferred_channel: 'email',
+    booking_status: 'CONFIRMED',
+    payment_status: 'PAID',
+    source: 'PHONE',
+    duplicate_of_lead_id: null,
+    created_at: daysAgo(7)
+  },
+  {
+    id: 'RV-1008',
+    business_id: 'business-001',
+    name: 'Farah Khan',
+    email: 'farah.demo@example.invalid',
+    phone: '+91-00000-00008',
+    message: 'The technician arrived late last time and I am unhappy with the service. I want a manager to call me.',
+    enquiry_type: 'AC repair',
+    potential_value: 4500,
+    status: 'ESCALATED',
+    received_at: daysAgo(3),
+    last_contacted_at: daysAgo(2),
+    follow_up_count: 0,
+    contact_consent: 'CONSENTED',
+    preferred_channel: 'phone',
+    booking_status: 'NOT_BOOKED',
+    payment_status: 'NOT_PAID',
+    source: 'WEBSITE',
+    duplicate_of_lead_id: null,
+    created_at: daysAgo(3)
+  },
+  {
+    id: 'RV-1009',
+    business_id: 'business-001',
+    name: 'Rahul Sharma',
+    email: 'rahul.demo@example.invalid',
+    phone: '+91-00000-00001',
+    message: 'Following up on my AC repair enquiry. Can you confirm whether a technician is available?',
+    enquiry_type: 'AC repair',
+    potential_value: 4000,
+    status: 'NEW',
+    received_at: daysAgo(4),
+    last_contacted_at: null,
+    follow_up_count: 0,
+    contact_consent: 'CONSENTED',
+    preferred_channel: 'email',
+    booking_status: 'NOT_BOOKED',
+    payment_status: 'NOT_PAID',
+    source: 'WEBSITE',
+    duplicate_of_lead_id: 'RV-1001',
+    created_at: daysAgo(4)
+  },
+  {
+    id: 'RV-1010',
+    business_id: 'business-001',
+    name: 'Kavya Menon',
+    email: 'kavya.demo@example.invalid',
+    phone: '+91-00000-00010',
+    message: 'I am comparing installation options. Could you explain what is included in the installation fee?',
+    enquiry_type: 'AC installation',
+    potential_value: 3500,
+    status: 'NEW',
+    received_at: hoursAgo(12),
+    last_contacted_at: null,
+    follow_up_count: 0,
+    contact_consent: 'CONSENTED',
+    preferred_channel: 'email',
+    booking_status: 'NOT_BOOKED',
+    payment_status: 'NOT_PAID',
+    source: 'WEBSITE',
+    duplicate_of_lead_id: null,
+    created_at: hoursAgo(12)
+  },
+  // ===== EXPANDED DEMO LEADS (RV-2001 to RV-2025) =====
   {
     id: 'RV-2001',
     business_id: 'business-001',
@@ -621,7 +836,7 @@ export const MOCK_LEADS: Lead[] = [
     received_at: daysAgo(1),
     last_contacted_at: null,
     follow_up_count: 0,
-    contact_consent: 'CONSENTED',
+    contact_consent: 'UNKNOWN',
     preferred_channel: 'email',
     booking_status: 'NOT_BOOKED',
     payment_status: 'NOT_PAID',
@@ -968,6 +1183,159 @@ Service Coordinator, CoolCare AC Services
  * REALISTIC TIMELINE EVENTS
  */
 export const MOCK_TIMELINE_EVENTS: Record<string, any[]> = {
+  'RV-1001': [
+    {
+      id: 'timeline-1001-1',
+      type: 'Lead Created',
+      description: 'Website enquiry received for split AC cooling issue. No response recorded.',
+      timestamp: daysAgo(5),
+      status: 'NEW'
+    }
+  ],
+  'RV-1002': [
+    {
+      id: 'timeline-1002-1',
+      type: 'Lead Created',
+      description: 'Phone enquiry received requesting AC full service quote',
+      timestamp: daysAgo(6),
+      status: 'NEW'
+    },
+    {
+      id: 'timeline-1002-2',
+      type: 'Quote Sent',
+      description: 'Formal quote of ₹8,500 sent via email. Customer asked about gas pressure check.',
+      timestamp: daysAgo(5),
+      status: 'QUOTE_SENT'
+    }
+  ],
+  'RV-1003': [
+    {
+      id: 'timeline-1003-1',
+      type: 'Lead Created',
+      description: 'AC installation inquiry submitted online',
+      timestamp: daysAgo(4),
+      status: 'NEW'
+    },
+    {
+      id: 'timeline-1003-2',
+      type: 'Booking Discussed',
+      description: 'Tentative installation slot discussed but customer postponed final confirmation.',
+      timestamp: daysAgo(4),
+      status: 'BOOKING_PENDING'
+    }
+  ],
+  'RV-1004': [
+    {
+      id: 'timeline-1004-1',
+      type: 'Lead Created',
+      description: 'AC repair requested. Customer noted loud rattling noise.',
+      timestamp: daysAgo(2),
+      status: 'NEW'
+    },
+    {
+      id: 'timeline-1004-2',
+      type: 'Callback Requested',
+      description: 'Customer explicitly requested phone callback after 6 PM.',
+      timestamp: daysAgo(2),
+      status: 'CALLBACK_REQUESTED'
+    }
+  ],
+  'RV-1005': [
+    {
+      id: 'timeline-1005-1',
+      type: 'Lead Created',
+      description: 'Inquiry for split AC repair received',
+      timestamp: daysAgo(5),
+      status: 'NEW'
+    },
+    {
+      id: 'timeline-1005-2',
+      type: 'Quote Sent',
+      description: 'Repair estimate of ₹3,000 sent to customer',
+      timestamp: daysAgo(4),
+      status: 'QUOTE_SENT'
+    },
+    {
+      id: 'timeline-1005-3',
+      type: 'Customer Declined',
+      description: 'Customer replied: "Thanks for estimate, decided not to proceed at this time."',
+      timestamp: daysAgo(4),
+      status: 'DECLINED'
+    }
+  ],
+  'RV-1006': [
+    {
+      id: 'timeline-1006-1',
+      type: 'Lead Created',
+      description: 'Inquiry for annual maintenance package details',
+      timestamp: daysAgo(7),
+      status: 'NEW'
+    },
+    {
+      id: 'timeline-1006-2',
+      type: 'Opt-Out Registered',
+      description: 'Customer opted out of promotional and follow-up communications.',
+      timestamp: daysAgo(6),
+      status: 'OPTED_OUT'
+    }
+  ],
+  'RV-1007': [
+    {
+      id: 'timeline-1007-1',
+      type: 'Lead Created',
+      description: 'Urgent compressor repair requested',
+      timestamp: daysAgo(7),
+      status: 'NEW'
+    },
+    {
+      id: 'timeline-1007-2',
+      type: 'Service Completed',
+      description: 'Technician completed AC repair successfully.',
+      timestamp: daysAgo(3),
+      status: 'CONVERTED'
+    },
+    {
+      id: 'timeline-1007-3',
+      type: 'Payment Received',
+      description: 'Full payment of ₹7,000 confirmed received.',
+      timestamp: daysAgo(3),
+      status: 'PAID'
+    }
+  ],
+  'RV-1008': [
+    {
+      id: 'timeline-1008-1',
+      type: 'Complaint Logged',
+      description: 'Customer reported technician arrived 2 hours late; unhappy with service.',
+      timestamp: daysAgo(3),
+      status: 'ESCALATED'
+    },
+    {
+      id: 'timeline-1008-2',
+      type: 'Manager Callback Escalated',
+      description: 'Customer demanded call from service manager. Sales outreach blocked.',
+      timestamp: daysAgo(2),
+      status: 'CALLBACK_REQUESTED'
+    }
+  ],
+  'RV-1009': [
+    {
+      id: 'timeline-1009-1',
+      type: 'Duplicate Inquiry',
+      description: 'Identical follow-up enquiry received from Rahul Sharma. Linked to RV-1001.',
+      timestamp: daysAgo(4),
+      status: 'NEW'
+    }
+  ],
+  'RV-1010': [
+    {
+      id: 'timeline-1010-1',
+      type: 'Lead Created',
+      description: 'Customer comparing AC installation options and fees. Within active response cooldown.',
+      timestamp: hoursAgo(12),
+      status: 'NEW'
+    }
+  ],
   'RV-2001': [
     {
       id: 'timeline-2001-1',

@@ -42,8 +42,8 @@ function Dashboard({ onViewLead }: DashboardProps) {
     setLoading(true)
     try {
       const [leadsRes, summaryRes] = await Promise.all([
-        fetch(`http://localhost:5000/api/leads${filter !== 'all' ? `?status=${filter}` : ''}`),
-        fetch('http://localhost:5000/api/analytics/summary')
+        fetch(`/api/leads${filter !== 'all' ? `?status=${filter}` : ''}`),
+        fetch('/api/analytics/summary')
       ])
 
       const leadsData = await leadsRes.json()

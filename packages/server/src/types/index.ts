@@ -6,11 +6,19 @@
 export interface Business {
   id: string;
   name: string;
+  industry?: string;
+  description?: string;
   email: string;
   phone?: string;
   website?: string;
-  created_at: string;
+  currency?: {
+    code: string;
+    symbol: string;
+  };
+  created_at?: string;
 }
+
+export type { BusinessProfile, ServiceOffering, BusinessPolicy, RecoverySettings } from '../services/businessConfig.js';
 
 // Lead status enum
 export enum LeadStatus {
@@ -29,6 +37,7 @@ export enum LeadStatus {
 export enum ContactConsent {
   CONSENTED = 'CONSENTED',
   OPTED_OUT = 'OPTED_OUT',
+  UNKNOWN = 'UNKNOWN',
 }
 
 // Lead interface
