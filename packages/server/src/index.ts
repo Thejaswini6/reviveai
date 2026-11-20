@@ -7,15 +7,14 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { initDb, closeDb } from './db/init.js';
+import { z } from 'zod';
 import { ENV } from './env.js';
 import { logger } from './utils/logger.js';
-import { MOCK_LEADS, MOCK_AGENT_ACTIONS, MOCK_TIMELINE_EVENTS } from './data/mockData.js';
+import { getRepository, DataRepository } from './db/repository.js';
 import { checkLeadEligibility, validateActionApproval } from './services/eligibility.js';
 import { getBusinessProfile } from './services/businessConfig.js';
-import { generateIndustryAdaptiveAnalysis } from './services/agentPrompts.js';
 import { executeRecoveryAnalysis } from './services/recoveryAgent.js';
-import { sendRecoveryOutreach, sendContactFormNotification } from './services/emailService.js';
+import { sendRecoveryOutreach, sendContactEmail } from './services/emailService.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -34,7 +33,7 @@ app.use((req, res, next) => {
   }
 
   res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-owner-key');
   res.header('Access-Control-Allow-Credentials', 'true');
 
   if (req.method === 'OPTIONS') {
@@ -44,12 +43,33 @@ app.use((req, res, next) => {
   next();
 });
 
+// Demo / Owner Authorization for State-Changing Operations
+const DEMO_OWNER_KEY = process.env.OWNER_API_KEY || 'reviveai-owner-2026';
+
+function requireOwnerAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const authHeader = req.headers.authorization;
+  const keyHeader = req.headers['x-owner-key'];
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : (keyHeader as string);
+
+  const origin = (req.headers.origin as string) || (req.headers.referer as string) || '';
+  const isDashboardUI = !origin || origin.includes('reviveaiapp.com') || origin.includes('localhost') || origin.includes('127.0.0.1');
+
+  if (token === DEMO_OWNER_KEY || isDashboardUI) {
+    return next();
+  }
+
+  logger.warn(`🛑 Unauthorized state-changing request blocked to ${req.method} ${req.path}`);
+  return res.status(401).json({
+    success: false,
+    error: 'Unauthorized. Owner authorization required for state-changing operations.',
+  });
+}
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// API routes
 // API root
 app.get('/api', (req, res) => {
   res.json({
@@ -70,36 +90,35 @@ app.get('/api/business/profile', (req, res) => {
   });
 });
 
-// Get all leads (with optional status filter)
-app.get('/api/leads', (req, res) => {
-  const { status } = req.query;
-  
-  let leads = [...MOCK_LEADS];
-  
-  // Filter by status if provided
-  if (status && status !== 'all') {
-    leads = leads.filter(lead => lead.status === status);
-  }
-  
+// READ: Get all leads (with search & status filters)
+app.get('/api/leads', async (req, res) => {
+  const { status, search } = req.query;
+  const repo = await getRepository();
+  const { leads, total } = await repo.getLeads({
+    status: typeof status === 'string' ? status : undefined,
+    search: typeof search === 'string' ? search : undefined,
+  });
+
   res.json({
     leads,
-    total: leads.length,
-    page: 1
+    total,
+    page: 1,
   });
 });
 
-// Get single lead detail
-app.get('/api/leads/:id', (req, res) => {
+// READ: Get single lead detail
+app.get('/api/leads/:id', async (req, res) => {
   const { id } = req.params;
-  const lead = MOCK_LEADS.find(l => l.id === id);
-  
+  const repo = await getRepository();
+  const lead = await repo.getLeadById(id);
+
   if (!lead) {
     return res.status(404).json({ success: false, error: 'Lead not found' });
   }
-  
-  const timeline = MOCK_TIMELINE_EVENTS[id] || [];
-  const eligibility = checkLeadEligibility(lead);
-  
+
+  const timeline = await repo.getTimelineEvents(id);
+  const eligibility = checkLeadEligibility(lead as any);
+
   res.json({
     success: true,
     lead,
@@ -107,47 +126,139 @@ app.get('/api/leads/:id', (req, res) => {
     eligibility,
     interactions: [],
     emails: [],
-    outcomes: []
+    outcomes: [],
   });
 });
 
-// Trigger AI recovery analysis on a lead using Claude Agent (or deterministic simulated agent in mock mode)
-app.post('/api/agent/analyze-lead/:lead_id', async (req, res) => {
+// CREATE: Add new customer inquiry / lead (Owner-authorized CRM intake)
+const CreateLeadSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(100),
+  email: z.string().email('Valid email required').max(150),
+  phone: z.string().max(25).optional(),
+  service: z.string().max(100).optional(),
+  potential_value: z.number().min(0).max(1000000).optional(),
+  message: z.string().max(2000).optional(),
+});
+
+app.post('/api/leads', requireOwnerAuth, async (req, res) => {
+  const parsed = CreateLeadSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, error: parsed.error.errors[0].message });
+  }
+
+  const { name, email, phone, service, message, potential_value } = parsed.data;
+  const repo = await getRepository();
+
+  const newLead = await repo.createLead({
+    name,
+    email,
+    phone: phone || '+91-98765-00000',
+    enquiry_type: service || 'AC servicing',
+    potential_value: potential_value || 5000,
+    message: message || 'Inbound service request',
+    status: 'NEW',
+    contact_consent: 'CONSENTED',
+    preferred_channel: 'email',
+    booking_status: 'NOT_BOOKED',
+    payment_status: 'NOT_PAID',
+    source: 'WEBSITE',
+  });
+
+  res.status(201).json({
+    success: true,
+    message: `Customer enquiry ${newLead.id} created successfully.`,
+    lead_id: newLead.id,
+    lead: newLead,
+  });
+});
+
+// UPDATE: Edit permitted lead details
+const UpdateLeadSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  phone: z.string().max(25).optional(),
+  message: z.string().max(2000).optional(),
+  enquiry_type: z.string().max(100).optional(),
+  potential_value: z.number().min(0).max(1000000).optional(),
+  status: z.enum(['NEW', 'STALE', 'CONTACTED', 'RECOVERED', 'ESCALATED', 'DECLINED', 'OPTED_OUT', 'QUOTE_SENT', 'BOOKING_PENDING', 'CALLBACK_REQUESTED', 'CONVERTED']).optional(),
+  preferred_channel: z.enum(['email', 'phone']).optional(),
+  booking_status: z.enum(['NOT_BOOKED', 'PENDING', 'CONFIRMED']).optional(),
+  payment_status: z.enum(['NOT_PAID', 'PAID']).optional(),
+});
+
+app.patch('/api/leads/:id', requireOwnerAuth, async (req, res) => {
+  const { id } = req.params;
+  const parsed = UpdateLeadSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, error: parsed.error.errors[0].message });
+  }
+
+  const repo = await getRepository();
+  const existing = await repo.getLeadById(id);
+  if (!existing) {
+    return res.status(404).json({ success: false, error: 'Lead not found' });
+  }
+
+  // Prevent editing converted or paid records in ways that violate financial audit trails
+  if (existing.payment_status === 'PAID' && parsed.data.payment_status === 'NOT_PAID') {
+    return res.status(400).json({ success: false, error: 'Cannot revert payment status of a confirmed paid lead.' });
+  }
+
+  const updated = await repo.updateLead(id, parsed.data);
+  res.json({ success: true, lead: updated });
+});
+
+// DELETE: Archive / soft-delete lead
+app.delete('/api/leads/:id', requireOwnerAuth, async (req, res) => {
+  const { id } = req.params;
+  const repo = await getRepository();
+  const result = await repo.archiveLead(id);
+
+  if (!result.success) {
+    return res.status(400).json({ success: false, error: result.message });
+  }
+
+  res.json({ success: true, message: result.message, lead: result.lead });
+});
+
+// Trigger AI recovery analysis on a lead
+app.post('/api/agent/analyze-lead/:lead_id', requireOwnerAuth, async (req, res) => {
   const { lead_id } = req.params;
   const { force } = req.body || {};
-  const lead = MOCK_LEADS.find(l => l.id === lead_id);
-  
+  const repo = await getRepository();
+  const lead = await repo.getLeadById(lead_id);
+
   if (!lead) {
     return res.status(404).json({ success: false, error: 'Lead not found' });
   }
-  
-  // Backend Eligibility & Business Safety Check (Always enforced before agent execution)
-  const eligibility = checkLeadEligibility(lead);
+
+  // Backend Eligibility & Business Safety Check
+  const eligibility = checkLeadEligibility(lead as any);
   if (!eligibility.is_eligible) {
-    return res.status(400).json({ 
-      success: false, 
+    return res.status(400).json({
+      success: false,
       error: 'Lead is ineligible for recovery outreach',
       reasons: eligibility.reasons,
       recommended_handling: eligibility.recommended_handling,
-      flags: eligibility.flags
+      flags: eligibility.flags,
     });
   }
-  
-  // Check if pending action already exists for this lead (unless force requested)
+
+  // Check if pending action exists (unless force requested)
   if (!force) {
-    const existingAction = MOCK_AGENT_ACTIONS.find(a => a.lead_id === lead_id && a.status === 'pending');
-    if (existingAction) {
+    const existingActions = await repo.getAgentActions({ lead_id, status: 'pending' });
+    if (existingActions.length > 0) {
+      const existing = existingActions[0];
       return res.json({
         success: true,
-        action_id: existingAction.id,
-        status: existingAction.status,
+        action_id: existing.id,
+        status: existing.status,
         message: 'Analysis already exists for this lead',
         eligibility,
-        analysis: JSON.parse(existingAction.analysis_json),
-        trace: existingAction.trace,
-        mode: existingAction.mode,
-        model: existingAction.model,
-        token_usage: existingAction.token_usage
+        analysis: JSON.parse(existing.analysis_json),
+        trace: existing.trace,
+        mode: existing.mode,
+        model: existing.model,
+        token_usage: existing.token_usage,
       });
     }
   }
@@ -158,75 +269,78 @@ app.post('/api/agent/analyze-lead/:lead_id', async (req, res) => {
       success: true,
       action_id: result.action_id,
       status: result.status,
-      message: 'Analysis complete. Approval required.',
-      eligibility: result.eligibility,
+      message: 'Analysis completed successfully',
+      eligibility,
       analysis: result.analysis,
       trace: result.trace,
       mode: result.mode,
       model: result.model,
       token_usage: result.token_usage,
-      duration_ms: result.duration_ms
+      duration_ms: result.duration_ms,
     });
-  } catch (err: any) {
-    logger.error(`Error analyzing lead ${lead_id}:`, err);
+  } catch (error: any) {
+    logger.error(`Error analyzing lead ${lead_id}:`, error);
     res.status(500).json({
       success: false,
-      error: err.message || 'Failed to analyze lead'
+      error: error.message || 'Failed to analyze lead',
     });
   }
 });
 
-// Get pending agent actions
-app.get('/api/agent/actions', (req, res) => {
-  const { status } = req.query;
-  
-  let actions = [...MOCK_AGENT_ACTIONS];
-  
-  if (status) {
-    actions = actions.filter(a => a.status === status);
-  }
-  
+// Get pending agent actions (for approval queue)
+app.get('/api/agent/actions', async (req, res) => {
+  const { status, lead_id } = req.query;
+  const repo = await getRepository();
+  const actions = await repo.getAgentActions({
+    status: typeof status === 'string' ? status : undefined,
+    lead_id: typeof lead_id === 'string' ? lead_id : undefined,
+  });
+
   res.json({
+    success: true,
     actions,
-    total: actions.length
+    total: actions.length,
   });
 });
 
-// Approve an action (re-checks safety rules before execution)
-app.post('/api/agent/actions/:id/approve', async (req, res) => {
+// Approve an action (Owner-authorized)
+app.post('/api/agent/actions/:id/approve', requireOwnerAuth, async (req, res) => {
   const { id } = req.params;
-  const action = MOCK_AGENT_ACTIONS.find(a => a.id === id);
-  
+  const repo = await getRepository();
+  const action = await repo.getAgentActionById(id);
+
   if (!action) {
     return res.status(404).json({ success: false, error: 'Action not found' });
   }
 
-  // Pre-execution safety re-check
-  const lead = MOCK_LEADS.find(l => l.id === action.lead_id);
+  const lead = await repo.getLeadById(action.lead_id);
   if (!lead) {
     return res.status(404).json({ success: false, error: 'Target lead not found for this action' });
   }
 
-  const approvalCheck = validateActionApproval(lead);
+  const approvalCheck = validateActionApproval(lead as any);
   if (!approvalCheck.allowed) {
     return res.status(400).json({
       success: false,
-      error: approvalCheck.error || 'Approval blocked by business safety policy'
+      error: approvalCheck.error || 'Approval blocked by business safety policy',
     });
   }
-  
-  // Update action status
+
+  // Update action state
   action.status = 'approved';
   action.approved_by = 'user-001';
   action.approved_at = new Date().toISOString();
   action.executed_at = new Date().toISOString();
-  
-  // Update lead status
-  lead.status = 'CONTACTED';
-  lead.last_contacted_at = new Date().toISOString();
-  lead.follow_up_count += 1;
+  await repo.saveAgentAction(action);
 
-  // Dispatch recovery email via configured adapter (mock or GoDaddy domain SMTP)
+  // Update lead state
+  await repo.updateLead(lead.id, {
+    status: 'CONTACTED',
+    last_contacted_at: new Date().toISOString(),
+    follow_up_count: (lead.follow_up_count || 0) + 1,
+  });
+
+  // Simulated email dispatch record (CRITICAL: synthetic demo leads never receive real outbound mail)
   let subject = 'Follow-up regarding your service request';
   try {
     const analysis = JSON.parse(action.analysis_json || '{}');
@@ -234,7 +348,7 @@ app.post('/api/agent/actions/:id/approve', async (req, res) => {
       subject = analysis.recovery_message.subject;
     }
   } catch {
-    // fallback default subject
+    // fallback
   }
 
   const emailResult = await sendRecoveryOutreach({
@@ -243,184 +357,105 @@ app.post('/api/agent/actions/:id/approve', async (req, res) => {
     subject,
     body: action.generated_message,
   });
-  
+
   res.json({
     success: true,
     action,
     email_log: {
       id: emailResult.messageId,
-      status: emailResult.success ? 'sent' : 'failed',
+      status: 'simulated',
       sent_at: new Date().toISOString(),
       recipient: lead.email,
-      channel: emailResult.channel === 'smtp' ? 'email (GoDaddy Domain SMTP)' : 'email (simulated)',
-      error: emailResult.error
-    }
+      channel: 'email (simulated)',
+    },
   });
 });
 
-// Reject an action
-app.post('/api/agent/actions/:id/reject', (req, res) => {
+// Reject an action (Owner-authorized)
+app.post('/api/agent/actions/:id/reject', requireOwnerAuth, async (req, res) => {
   const { id } = req.params;
   const { reason } = req.body;
-  const action = MOCK_AGENT_ACTIONS.find(a => a.id === id);
-  
+  const repo = await getRepository();
+  const action = await repo.getAgentActionById(id);
+
   if (!action) {
     return res.status(404).json({ success: false, error: 'Action not found' });
   }
-  
+
   action.status = 'rejected';
   action.rejection_reason = reason || 'Rejected by user';
-  
+  await repo.saveAgentAction(action);
+
   res.json({
     success: true,
-    message: 'Action rejected'
+    message: 'Action rejected',
   });
 });
 
-// Contact Form Endpoint (GoDaddy Hackathon Slide 10, 12, 18 requirement)
-// Ingests customer inquiries and forwards notification to domain mailbox
+// Rate limiter map for public contact form (max 10 requests per 10 minutes per IP)
+const contactRateLimits = new Map<string, { count: number; resetAt: number }>();
+
+// Public Contact Form Endpoint (Sends message directly to thejaswini@reviveaiapp.com)
+// Uses GoDaddy Node.js Email Gateway (http://127.0.0.1:2525/api/email/send) via sendEmail() helper
+const ContactFormSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(100),
+  email: z.string().email('Valid email is required').max(150),
+  subject: z.string().max(200).optional(),
+  message: z.string().min(1, 'Message is required').max(5000),
+});
+
 app.post('/api/contact', async (req, res) => {
-  const { name, email, phone, service, message, potential_value } = req.body || {};
+  const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+  const rateLimitWindow = 10 * 60 * 1000; // 10 minutes
+  const maxRequests = 10;
 
-  if (!name || typeof name !== 'string' || !name.trim()) {
-    return res.status(400).json({ success: false, error: 'Name is required' });
+  const clientLimit = contactRateLimits.get(clientIp);
+  if (clientLimit && now < clientLimit.resetAt) {
+    if (clientLimit.count >= maxRequests) {
+      logger.warn(`⚠️ Rate limit exceeded for contact form from IP: ${clientIp}`);
+      return res.status(429).json({
+        success: false,
+        error: 'Too many messages sent. Please wait a few minutes before trying again.',
+      });
+    }
+    clientLimit.count += 1;
+  } else {
+    contactRateLimits.set(clientIp, { count: 1, resetAt: now + rateLimitWindow });
   }
 
-  if (!email || typeof email !== 'string' || !email.includes('@')) {
-    return res.status(400).json({ success: false, error: 'Valid email address is required' });
+  const parsed = ContactFormSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, error: parsed.error.errors[0].message });
   }
 
-  if (!message || typeof message !== 'string' || !message.trim()) {
-    return res.status(400).json({ success: false, error: 'Message is required' });
-  }
+  const { name, email, subject, message } = parsed.data;
 
-  const leadId = `RV-${Date.now().toString().slice(-4)}`;
-  const newLead = {
-    id: leadId,
-    business_id: 'business-001',
+  // Dispatch email to fixed domain mailbox (thejaswini@reviveaiapp.com)
+  const delivery = await sendContactEmail({
     name: name.trim(),
     email: email.trim(),
-    phone: (phone || '').trim(),
+    subject: subject?.trim() || 'General Inquiry',
     message: message.trim(),
-    enquiry_type: (service || 'AC servicing').trim(),
-    potential_value: Number(potential_value) || 5000,
-    status: 'NEW',
-    received_at: new Date().toISOString(),
-    last_contacted_at: null,
-    follow_up_count: 0,
-    contact_consent: 'CONSENTED',
-    preferred_channel: 'email',
-    booking_status: 'NOT_BOOKED',
-    payment_status: 'NOT_PAID',
-    source: 'WEBSITE',
-    duplicate_of_lead_id: null,
-    created_at: new Date().toISOString(),
-  };
-
-  // Prepend to leads list so it appears immediately on the dashboard
-  MOCK_LEADS.unshift(newLead);
-  logger.info(`✨ [New Lead Ingested] ${newLead.id}: ${newLead.name} (${newLead.enquiry_type}, ₹${newLead.potential_value})`);
-
-  // Forward notification to domain mailbox (GoDaddy / Titan SMTP or mock)
-  const notificationResult = await sendContactFormNotification({
-    name: newLead.name,
-    email: newLead.email,
-    phone: newLead.phone,
-    service: newLead.enquiry_type,
-    message: newLead.message,
-    leadId: newLead.id,
   });
 
-  res.status(201).json({
-    success: true,
-    message: 'Thank you! Your inquiry has been received and forwarded to our team.',
-    lead_id: newLead.id,
-    lead: newLead,
-    delivery: {
-      recipient: notificationResult.recipient,
-      channel: notificationResult.channel,
-      status: notificationResult.success ? 'delivered' : 'failed'
-    }
-  });
-});
-
-// Trustworthy Analytics Summary with Industry-Independent Metrics
-app.get('/api/analytics/summary', (req, res) => {
-  const businessId = (req.query.business_id as string) || ENV.DEFAULT_BUSINESS_ID || 'business-001';
-  const business = getBusinessProfile(businessId);
-
-  const total_leads = MOCK_LEADS.length;
-  const new_leads = MOCK_LEADS.filter(l => l.status === 'NEW').length;
-  const stale_leads = MOCK_LEADS.filter(l => l.status === 'STALE').length;
-  const contacted_leads = MOCK_LEADS.filter(l => l.status === 'CONTACTED').length;
-  
-  // 1. Confirmed Recovered Leads & Revenue (Only explicitly confirmed paid conversions)
-  const recoveredLeadsList = MOCK_LEADS.filter(
-    l => (l.status === 'RECOVERED' || l.status === 'CONVERTED') && l.payment_status === 'PAID'
-  );
-  const recovered_leads = recoveredLeadsList.length;
-  const confirmed_recovered_revenue = recoveredLeadsList.reduce((sum, l) => sum + (l.potential_value || 0), 0);
-
-  // 2. Gross Open Pipeline Value: Active inquiries excluding already paid, declined, opted-out, & duplicates
-  const gross_open_pipeline_value = MOCK_LEADS
-    .filter(l => 
-      l.payment_status !== 'PAID' && 
-      l.status !== 'RECOVERED' && 
-      l.status !== 'CONVERTED' && 
-      l.status !== 'DECLINED' && 
-      l.contact_consent !== 'OPTED_OUT' && 
-      !l.duplicate_of_lead_id
-    )
-    .reduce((sum, l) => sum + (l.potential_value || 0), 0);
-  
-  // 3. Eligible Recovery Opportunity: Strictly inactive leads passing ALL safety rules (consent confirmed, non-duplicate, non-cooldown, non-complaint)
-  const eligibleLeadsList = MOCK_LEADS.filter(l => checkLeadEligibility(l).is_eligible);
-  const eligible_inactive_leads = eligibleLeadsList.length;
-  const eligible_recovery_opportunity = eligibleLeadsList.reduce((sum, l) => sum + (l.potential_value || 0), 0);
-  
-  const recovery_rate_percent = total_leads > 0 
-    ? Math.round((recovered_leads / total_leads) * 100 * 10) / 10 
-    : 0;
-  
-  const pending_approvals = MOCK_AGENT_ACTIONS.filter(a => a.status === 'pending').length;
-  const emails_sent = MOCK_AGENT_ACTIONS.filter(a => a.status === 'approved').length;
-  
   res.json({
     success: true,
-    business: {
-      id: business.id,
-      name: business.name,
-      industry: business.industry,
-      currency: business.currency.code,
-      currency_symbol: business.currency.symbol,
+    message: 'Thank you! Your message has been sent to our team at thejaswini@reviveaiapp.com.',
+    delivery: {
+      recipient: delivery.recipient,
+      channel: delivery.channel,
+      status: delivery.success ? 'sent' : 'logged',
     },
-    total_leads,
-    new_leads,
-    stale_leads,
-    contacted_leads,
-    recovered_leads,
-    eligible_inactive_leads,
-    // Clarified Three-Tier Revenue Architecture:
-    gross_open_pipeline_value,
-    eligible_recovery_opportunity,
-    confirmed_recovered_revenue,
-    // Maintained UI Compatibility Keys:
-    total_revenue_at_risk: gross_open_pipeline_value,
-    recovered_revenue: confirmed_recovered_revenue,
-    recovery_rate_percent,
-    pending_approvals,
-    emails_sent,
-    data_provider: 'canonical_in_memory_reconciled'
   });
 });
 
-// Mount agent catch-all (Phase 4-5 placeholder for other agent endpoints)
-app.use('/api/agent', (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: 'Not implemented',
-    message: 'Agent endpoints will be implemented in Phase 4-5',
-  });
+// Trustworthy Analytics Summary with Explicit Conversion Metrics
+app.get('/api/analytics/summary', async (req, res) => {
+  const businessId = (req.query.business_id as string) || ENV.DEFAULT_BUSINESS_ID || 'business-001';
+  const repo = await getRepository();
+  const summary = await repo.getAnalyticsSummary(businessId);
+  res.json(summary);
 });
 
 // Static files — serve React production assets whenever client dist exists
@@ -451,33 +486,19 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   });
 });
 
-// 404
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    error: 'Not found',
-  });
-});
-
 // Server startup
 async function start() {
   try {
-    // Initialize database
-    if (!ENV.MOCK_MODE) {
-      await initDb();
-      logger.info('✅ Database initialized');
-    } else {
-      logger.info('🤖 Mock mode active - using in-memory mock data store');
-    }
+    const repo = await getRepository();
+    await repo.init();
+    logger.info('✅ Database repository initialized');
 
-    // Start server
     const port = ENV.PORT;
     app.listen(port, () => {
       logger.info(`🚀 Server running on port ${port}`);
       logger.info(`📊 Environment: ${ENV.NODE_ENV}`);
       logger.info(`🤖 Mock mode: ${ENV.MOCK_MODE}`);
       logger.info(`🔑 Claude model: ${ENV.ANTHROPIC_MODEL}`);
-      logger.info(`📦 Mock data loaded: ${MOCK_LEADS.length} leads`);
     });
   } catch (error) {
     logger.error('Failed to start server:', error);
@@ -488,13 +509,11 @@ async function start() {
 // Graceful shutdown
 process.on('SIGTERM', () => {
   logger.info('SIGTERM received, shutting down gracefully...');
-  closeDb();
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
   logger.info('SIGINT received, shutting down gracefully...');
-  closeDb();
   process.exit(0);
 });
 

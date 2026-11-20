@@ -8,14 +8,53 @@ import './App.css'
 
 type Page = 'dashboard' | 'approvals' | 'analytics' | 'lead-detail' | 'contact'
 
+function getInitialState(): { page: Page; leadId: string | null } {
+  if (typeof window === 'undefined') return { page: 'dashboard', leadId: null };
+  const path = window.location.pathname;
+  if (path.startsWith('/contact')) return { page: 'contact', leadId: null };
+  if (path.startsWith('/approvals')) return { page: 'approvals', leadId: null };
+  if (path.startsWith('/analytics')) return { page: 'analytics', leadId: null };
+  if (path.startsWith('/leads/')) {
+    const id = path.split('/')[2];
+    return { page: 'lead-detail', leadId: id || null };
+  }
+  return { page: 'dashboard', leadId: null };
+}
+
 function App() {
-  const [currentPage, setCurrentPage] = useState<Page>('dashboard')
-  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
-  const [serverStatus, setServerStatus] = useState<string>('connecting...')
+  const [initial] = useState(getInitialState);
+  const [currentPage, setCurrentPage] = useState<Page>(initial.page);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(initial.leadId);
+  const [serverStatus, setServerStatus] = useState<string>('connecting...');
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem('darkMode')
     return saved ? JSON.parse(saved) : false
   })
+
+  // Synchronize browser history and path
+  const navigateTo = (page: Page, leadId: string | null = null) => {
+    setCurrentPage(page);
+    setSelectedLeadId(leadId);
+    let targetPath = '/';
+    if (page === 'contact') targetPath = '/contact';
+    else if (page === 'approvals') targetPath = '/approvals';
+    else if (page === 'analytics') targetPath = '/analytics';
+    else if (page === 'lead-detail' && leadId) targetPath = `/leads/${leadId}`;
+
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState({ page, leadId }, '', targetPath);
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const state = getInitialState();
+      setCurrentPage(state.page);
+      setSelectedLeadId(state.leadId);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode)
@@ -30,20 +69,18 @@ function App() {
   }, [])
 
   const handleViewLead = (leadId: string) => {
-    setSelectedLeadId(leadId)
-    setCurrentPage('lead-detail')
+    navigateTo('lead-detail', leadId);
   }
 
   const handleBackToDashboard = () => {
-    setCurrentPage('dashboard')
-    setSelectedLeadId(null)
+    navigateTo('dashboard', null);
   }
 
   return (
     <div className="app">
       {/* Sidebar */}
       <aside className="sidebar">
-        <div className="sidebar-header">
+        <div className="sidebar-header" onClick={() => navigateTo('dashboard')} style={{ cursor: 'pointer' }}>
           <div className="logo">
             <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
               <rect width="32" height="32" rx="8" fill="currentColor" opacity="0.1"/>
@@ -57,7 +94,7 @@ function App() {
         <nav className="sidebar-nav">
           <button 
             className={`nav-item ${currentPage === 'dashboard' ? 'active' : ''}`}
-            onClick={() => setCurrentPage('dashboard')}
+            onClick={() => navigateTo('dashboard')}
           >
             <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="3" width="7" height="7" rx="1"/>
@@ -70,7 +107,7 @@ function App() {
 
           <button 
             className={`nav-item ${currentPage === 'approvals' ? 'active' : ''}`}
-            onClick={() => setCurrentPage('approvals')}
+            onClick={() => navigateTo('approvals')}
           >
             <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="10" cy="10" r="7"/>
@@ -81,7 +118,7 @@ function App() {
 
           <button 
             className={`nav-item ${currentPage === 'analytics' ? 'active' : ''}`}
-            onClick={() => setCurrentPage('analytics')}
+            onClick={() => navigateTo('analytics')}
           >
             <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M3 17V9l4-4 4 4 4-4 4 4v8"/>
@@ -92,13 +129,13 @@ function App() {
 
           <button 
             className={`nav-item ${currentPage === 'contact' ? 'active' : ''}`}
-            onClick={() => setCurrentPage('contact')}
+            onClick={() => navigateTo('contact')}
           >
             <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="2" y="4" width="16" height="12" rx="2"/>
               <path d="M2 6l8 6 8-6"/>
             </svg>
-            Contact Form
+            Contact Us
           </button>
         </nav>
 
@@ -131,26 +168,82 @@ function App() {
       </aside>
 
       {/* Main Content */}
-      <main className="main-content">
-        {currentPage === 'dashboard' && (
-          <DashboardEnhanced
-            onViewLead={handleViewLead}
-            onNavigateToContact={() => setCurrentPage('contact')}
-          />
-        )}
-        {currentPage === 'approvals' && <ApprovalQueue onViewLead={handleViewLead} />}
-        {currentPage === 'analytics' && <Analytics />}
-        {currentPage === 'contact' && (
-          <Contact
-            onNavigateToDashboard={handleBackToDashboard}
-            onInquirySubmitted={() => {
-              // Allows user to view lead on dashboard
-            }}
-          />
-        )}
-        {currentPage === 'lead-detail' && selectedLeadId && (
-          <LeadDetail leadId={selectedLeadId} onBack={handleBackToDashboard} />
-        )}
+      <main className="main-content" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <div style={{ flex: 1 }}>
+          {currentPage === 'dashboard' && (
+            <DashboardEnhanced
+              onViewLead={handleViewLead}
+              onNavigateToContact={() => navigateTo('contact')}
+            />
+          )}
+          {currentPage === 'approvals' && <ApprovalQueue onViewLead={handleViewLead} />}
+          {currentPage === 'analytics' && <Analytics />}
+          {currentPage === 'contact' && (
+            <Contact
+              onNavigateToDashboard={handleBackToDashboard}
+            />
+          )}
+          {currentPage === 'lead-detail' && selectedLeadId && (
+            <LeadDetail leadId={selectedLeadId} onBack={handleBackToDashboard} />
+          )}
+        </div>
+
+        {/* Global Public Footer */}
+        <footer style={{
+          marginTop: 'auto',
+          padding: '1.5rem 2rem',
+          borderTop: '1px solid var(--border)',
+          background: 'var(--bg-secondary)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1rem',
+          fontSize: '0.8125rem',
+          color: 'var(--text-secondary)'
+        }}>
+          <div>
+            <strong>ReviveAI</strong> — Autonomous Revenue Recovery for Small Businesses.
+            <div style={{ fontSize: '0.75rem', marginTop: '0.25rem', color: 'var(--text-tertiary)' }}>
+              Deployed on GoDaddy Node.js Hosting • Domain: <a href="https://reviveaiapp.com" style={{ color: 'var(--primary)' }}>reviveaiapp.com</a>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
+            <button
+              onClick={() => navigateTo('dashboard')}
+              style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.8125rem' }}
+            >
+              Dashboard
+            </button>
+            <button
+              onClick={() => navigateTo('approvals')}
+              style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.8125rem' }}
+            >
+              Approvals
+            </button>
+            <button
+              onClick={() => navigateTo('analytics')}
+              style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.8125rem' }}
+            >
+              Analytics
+            </button>
+            <button
+              onClick={() => navigateTo('contact')}
+              style={{
+                background: 'var(--primary)',
+                color: 'white',
+                border: 'none',
+                padding: '0.35rem 0.75rem',
+                borderRadius: '6px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontSize: '0.8125rem'
+              }}
+            >
+              ✉️ Contact Us
+            </button>
+          </div>
+        </footer>
       </main>
     </div>
   )

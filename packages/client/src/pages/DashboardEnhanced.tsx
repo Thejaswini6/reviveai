@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useToast } from '../contexts/ToastContext'
+import NewEnquiryModal from '../components/NewEnquiryModal'
 import './Dashboard.css'
 
 interface Lead {
@@ -41,6 +42,7 @@ function DashboardEnhanced({ onViewLead, onNavigateToContact }: DashboardProps) 
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set())
   const [revenueFilter, setRevenueFilter] = useState<string>('all')
   const [sourceFilter, setSourceFilter] = useState<string>('all')
+  const [showNewEnquiryModal, setShowNewEnquiryModal] = useState(false)
   const { showToast } = useToast()
 
   useEffect(() => {
@@ -242,31 +244,29 @@ function DashboardEnhanced({ onViewLead, onNavigateToContact }: DashboardProps) 
           <p>Monitor and recover stale leads with AI assistance</p>
         </div>
         <div className="header-actions">
-          {onNavigateToContact && (
-            <button
-              className="btn-primary"
-              onClick={onNavigateToContact}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                background: 'linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%)',
-                color: 'white',
-                border: 'none',
-                padding: '0.625rem 1rem',
-                borderRadius: '8px',
-                fontWeight: 600,
-                fontSize: '0.875rem',
-                cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(99, 102, 241, 0.25)'
-              }}
-            >
-              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M8 2v12m6-6H2"/>
-              </svg>
-              + New Inquiry
-            </button>
-          )}
+          <button
+            className="btn-primary"
+            onClick={() => setShowNewEnquiryModal(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              background: 'linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%)',
+              color: 'white',
+              border: 'none',
+              padding: '0.625rem 1rem',
+              borderRadius: '8px',
+              fontWeight: 600,
+              fontSize: '0.875rem',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(99, 102, 241, 0.25)'
+            }}
+          >
+            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M8 2v12m6-6H2"/>
+            </svg>
+            + New Inquiry
+          </button>
           <button className="btn-secondary" onClick={fetchData}>
             <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M3 8a5 5 0 015-5m0 10a5 5 0 005-5"/>
@@ -486,6 +486,14 @@ function DashboardEnhanced({ onViewLead, onNavigateToContact }: DashboardProps) 
           </tbody>
         </table>
       </div>
+
+      <NewEnquiryModal
+        isOpen={showNewEnquiryModal}
+        onClose={() => setShowNewEnquiryModal(false)}
+        onSuccess={() => {
+          fetchData()
+        }}
+      />
     </div>
   )
 }

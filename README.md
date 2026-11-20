@@ -1,398 +1,149 @@
-# 🚀 ReviveAI - Autonomous Revenue Recovery Agent
+# 🚀 ReviveAI — Autonomous Revenue Recovery Agent
 
-> Turn silent leads into revenue with AI-powered customer recovery for small businesses
+> Turn silent leads into recovered revenue with Claude-powered, human-approved customer recovery for small service businesses.
 
-[![Hackathon](https://img.shields.io/badge/GoDaddy-Hackathon%202026-00A4A6)]()
-[![Status](https://img.shields.io/badge/status-demo--ready-success)]()
-[![License](https://img.shields.io/badge/license-MIT-blue)]()
+[![Hackathon](https://img.shields.io/badge/GoDaddy-Inclusive%20Innovation%20Hackathon%202026-00A4A6)](https://reviveaiapp.com)
+[![Status](https://img.shields.io/badge/status-production--ready-success)](https://reviveaiapp.com)
+[![AI](https://img.shields.io/badge/AI-Claude%20Sonnet%205.5-purple)](https://www.anthropic.com)
+[![Domain](https://img.shields.io/badge/domain-reviveaiapp.com-blue)](https://reviveaiapp.com)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-![ReviveAI Dashboard](docs/screenshot-dashboard.png)
+---
+
+## 🌐 Live Deployment & Project Links
+
+- **Live Production URL:** [https://reviveaiapp.com](https://reviveaiapp.com) *(also available at [https://www.reviveaiapp.com](https://www.reviveaiapp.com))*
+- **Domain Mailbox:** `thejaswini@reviveaiapp.com` (GoDaddy Titan Business Email Pro Light)
+- **GitHub Repository:** [https://github.com/Thejaswini6/reviveai.git](https://github.com/Thejaswini6/reviveai.git)
+- **Deployment Branch:** `feature`
+- **Hosting Platform:** GoDaddy Node.js PaaS Hosting (`ss-product-id: paas-nodejs-v1`)
 
 ---
 
 ## 🎯 The Problem
 
-Small businesses lose **30-40% of potential revenue** from customers who request quotes but never respond. Manual follow-up is time-consuming and often too late.
+Small service businesses lose **30% to 40% of their annual revenue** to prospective customers who submit quote inquiries but go silent. For an independent HVAC, plumbing, or electrical contractor handling 40–80 inquiries a month, each stalled lead represents ₹3,000 to ₹50,000 in lost pipeline.
 
-## 💡 The Solution
-
-**ReviveAI** automatically detects stale leads, uses Claude AI to generate personalized recovery messages, and requires human approval before sending - giving small business owners their time back while recovering lost revenue.
-
----
-
-## ✨ Key Features
-
-### 🤖 AI-Powered Analysis
-- Analyzes customer context and intent using Claude Haiku 4.5
-- Identifies why customers went silent
-- Generates personalized recovery messages
-- Adapts tone for B2B vs B2C customers
-- **NEW**: AI-powered lead scoring (0-100 priority score)
-
-### 🛡️ Safety-First Design
-- ✅ Respects opted-out customers
-- ✅ Honors declined leads
-- ✅ Detects duplicates
-- ✅ Requires human approval for every message
-- ✅ Complete audit trail
-
-### 📊 Enhanced Dashboard
-- Real-time lead tracking with search
-- Revenue-at-risk calculations
-- **NEW**: Advanced filters (status, revenue, source)
-- **NEW**: Bulk operations (analyze multiple leads)
-- **NEW**: CSV export for reporting
-- Detailed customer profiles with timelines
-
-### 🎨 Modern UX
-- **NEW**: Toast notifications for instant feedback
-- **NEW**: Dark mode support for accessibility
-- **NEW**: Lead scoring with color-coded priorities
-- **NEW**: Real-time search across all fields
-- Responsive design (desktop, tablet, mobile)
-
-### ✓ Approval Workflow
-- Review AI recommendations
-- Preview generated messages
-- Approve/reject with one click
-- Track all actions
-
-### 📈 Analytics & Insights
-- Recovery rate tracking
-- Revenue impact measurement
-- Performance metrics
-- Trend analysis
+Why leads go cold:
+1. **Unanswered technical questions or fear of hidden costs.**
+2. **Delayed follow-up:** Service technicians are on-site fixing equipment, leaving inquiries unanswered for days.
+3. **Impersonal, robotic mass spam:** Generic bulk drip campaigns trigger customer unsubscribe requests.
+4. **Fear of autonomous errors:** Business owners cannot trust black-box AI sending unverified promises, unauthorized discounts, or contacting opted-out customers.
 
 ---
 
-## 🎬 Demo
+## 💡 The ReviveAI Solution
 
-**Live Demo**: http://localhost:5173/ (after setup)
+**ReviveAI** is a multi-tool autonomous revenue recovery agent powered by **Anthropic Claude Sonnet 5.5**, architected with strict **deterministic safety gates** and a mandatory **human-in-the-loop approval workflow**:
 
-### Quick Demo Workflow
-1. View enhanced dashboard with 25 realistic leads
-2. **NEW**: Try search - type "installation" to filter instantly
-3. **NEW**: Use filters - select "High Value" and "Residential"
-4. **NEW**: Check lead scores - see color-coded priorities (green/yellow/orange)
-5. Click high-value lead → Trigger AI analysis
-6. **NEW**: Select multiple leads → Bulk analyze
-7. Review generated messages in approval queue
-8. Approve → Lead status updates with toast notification
-9. **NEW**: Toggle dark mode for accessibility
-10. **NEW**: Export filtered leads to CSV
-11. Check analytics for revenue impact
+1. **Continuous Pipeline Monitoring:** Continuously evaluates canonical leads across statuses (`NEW`, `STALE`, `CONTACTED`, `RECOVERED`).
+2. **Deterministic Safety Gating:** Pre-filters all leads *before* invoking AI — strictly blocking opted-out users, converted customers, active complaints, and premature inquiries.
+3. **Multi-Tool Autonomous Analysis:** In eligible stale leads, the Claude agent executes a 6-step tool chain to inspect interaction history, calculate revenue-at-risk, formulate personalized recovery strategies, and draft empathetic outreach messages.
+4. **Human-in-the-Loop Approval:** No message is ever dispatched autonomously. Every AI recommendation enters an interactive Approval Queue where the owner reviews the exact reasoning, tool trace, and message preview before approving or rejecting.
+5. **Integrated Domain Email Delivery:** Outbound communications are routed through GoDaddy's authenticated email gateway and Titan Business Email (`thejaswini@reviveaiapp.com`).
 
 ---
 
-## 🛠️ Technology Stack
+## 📊 Live Metrics (CoolCare AC Services Reference Profile)
 
-- **Frontend**: React 18, TypeScript, Vite
-- **Backend**: Node.js, Express, TypeScript
-- **Database**: SQLite (zero-config)
-- **AI**: Anthropic Claude Haiku 4.5
-- **Deployment**: GoDaddy Node.js hosting ready
+The reference benchmark dataset contains **35 reconciled canonical leads** representing a typical metropolitan AC service business:
+
+- **Gross Open Pipeline at Risk:** **₹3,19,600** across 35 leads
+- **Eligible Recovery Opportunity:** **₹2,48,300** across 16 eligible stale/open leads
+- **Confirmed Recovered Revenue:** **₹50,200** across successfully won customers
+- **Overall Recovery Conversion Rate:** **22.8%**
 
 ---
 
-## 🚀 Quick Start
+## 🛠️ Complete Technology Stack
 
-### Prerequisites
-- Node.js 18+
-- npm (comes with Node.js)
+| Layer | Technology | Details |
+|---|---|---|
+| **Frontend** | React 18, TypeScript, Vite | Single-page application with responsive CSS, dark mode, toast notifications, search, filter, lead score badges, and quick presets |
+| **Backend** | Node.js, Express, TypeScript | REST API with rate limiting, input sanitization, deterministic safety rules, and SPA static asset fallback |
+| **AI Agent** | Anthropic Claude Sonnet 5.5 | Multi-tool autonomous agent (`AGENT_TOOLS`) with 6 distinct tool execution contracts |
+| **Safety Engine** | Deterministic Pre-Gating + Zod | Strict schema validation (`RecoveryAnalysisSchema`) and zero-tolerance policy gates |
+| **Data Provider** | In-memory Canonical Reconciled + SQLite Schema | High-performance in-memory state with 35 canonical leads; SQLite migration ready |
+| **Email Delivery** | GoDaddy Node.js Email Gateway + Titan SMTP | Outbound delivery via container gateway (`127.0.0.1:2525`) and Titan Mailbox (`thejaswini@reviveaiapp.com`) |
+| **Cloud Hosting** | GoDaddy Node.js Hosting | Cloud container platform with Cloudflare SSL certificate |
 
-### Installation
+---
+
+## 🤖 Claude Multi-Tool Agent Architecture
+
+The ReviveAI agent operates via 6 strictly defined tools:
+
+1. `fetch_lead_context(lead_id)`: Retrieves customer profile, business policies (free inspection, 90-day warranty, GST terms), and currency.
+2. `get_interaction_history(lead_id)`: Fetches past timeline interactions, computes exact inactivity days, and identifies customer sentiment.
+3. `calculate_revenue_at_risk(lead_id)`: Calculates gross pipeline value and assesses net recovery opportunity.
+4. `create_recovery_recommendation(lead_id, strategy, priority)`: Synthesizes high/medium/low priority recommendations.
+5. `generate_recovery_message(lead_id, subject, body, tone)`: Drafts contextual, high-conversion email outreach adhering to business policies.
+6. `request_approval(lead_id, action_summary)`: Stages the generated action in the pending approval queue for human verification.
+
+### Zero-Credit Simulated Mock Mode vs. Live Anthropic Mode
+- **Simulated Mock Mode (`MOCK_MODE=true`):** Enabled by default for safe evaluation and testing without consuming Anthropic API credits. Generates deterministic 6-step traces and full analyses.
+- **Live Mode (`MOCK_MODE=false`):** Calls Anthropic Claude Sonnet 5.5 (`claude-sonnet-5-5`) using the configured `ANTHROPIC_API_KEY`. Verified live on lead RV-2001 (Rajesh Mehta).
+
+---
+
+## 🛡️ Business Safety & Compliance Matrix
+
+ReviveAI enforces a 10-scenario business safety test suite before any agent or email action:
+
+| Scenario | Lead ID | Type | Action Taken | Reason Enforced |
+|---|---|---|---|---|
+| 1 | RV-2001 | Eligible Stale Lead | **Allowed** | Inactivity >3 days, consented, valid inquiry |
+| 2 | RV-1002 | Cold Post-Quote Lead | **Allowed** | Quote delivered, customer silent |
+| 3 | RV-2019 | Pricing Objection | **Allowed** | Recoverable with free inspection / warranty offer |
+| 4 | RV-1006 | Opted-Out Customer | **BLOCKED** | GDPR / Customer privacy gate strictly enforced |
+| 5 | RV-2025 | Missing Consent | **BLOCKED** | Unverified consent prohibited from automated outreach |
+| 6 | RV-1007 | Converted / Paid Lead | **BLOCKED** | Already paid; excluded from marketing outreach |
+| 7 | RV-1005 | Declined Lead | **BLOCKED** | Customer explicitly declined service; respected |
+| 8 | RV-1009 | Duplicate Lead | **BLOCKED** | Consolidated onto primary lead RV-1001 |
+| 9 | RV-1008 | Customer Complaint | **BLOCKED** | Routed to human manager escalation |
+| 10 | RV-1004 | Phone Callback Request| **BLOCKED** | Automated email blocked; scheduled for human phone call |
+
+---
+
+## 🚀 Running the Project Locally
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/reviveai.git
+git clone https://github.com/Thejaswini6/reviveai.git
 cd reviveai
+git checkout feature
 
 # Install dependencies
 npm install
 
-# Start development servers
-npm run dev
-
-# Open your browser
-# Frontend: http://localhost:5173
-# Backend: http://localhost:5000
-```
-
-### Environment Setup (Optional)
-
-For real Claude API integration, create `.env` file in `packages/server/`:
-
-```env
-PORT=5000
-NODE_ENV=development
-MOCK_MODE=false
-ANTHROPIC_API_KEY=your-anthropic-api-key
-ANTHROPIC_MODEL=claude-haiku-4-5
-CORS_ORIGIN=http://localhost:5173
-```
-
----
-
-## 📁 Project Structure
-
-```
-reviveai/
-├── packages/
-│   ├── client/                 # React frontend
-│   │   ├── src/
-│   │   │   ├── pages/          # Dashboard, LeadDetail, ApprovalQueue, Analytics
-│   │   │   ├── App.tsx         # Main app with routing
-│   │   │   └── index.css       # Global styles
-│   │   ├── index.html
-│   │   ├── package.json
-│   │   └── vite.config.ts
-│   │
-│   └── server/                 # Express backend
-│       ├── src/
-│       │   ├── data/           # Mock data (25 realistic leads)
-│       │   ├── db/             # Database schema
-│       │   ├── services/       # Business logic
-│       │   ├── utils/          # Helpers
-│       │   └── index.ts        # Main server
-│       ├── package.json
-│       └── tsconfig.json
-│
-├── docs/                       # Documentation
-│   ├── architecture.md
-│   ├── requirements.md
-│   ├── demo-plan.md
-│   └── deployment.md
-│
-├── DEMO_GUIDE.md              # Complete demo walkthrough
-├── HACKATHON_SUBMISSION.md    # Hackathon submission details
-├── package.json                # Root package
-└── README.md                   # This file
-```
-
----
-
-## 📊 Mock Data
-
-The demo includes **25 realistic leads** covering:
-
-- ✅ High-value corporate clients (₹15K-₹65K)
-- ✅ Residential customers
-- ✅ Price-sensitive customers
-- ✅ Urgent callback requests
-- ✅ Opted-out customers (privacy compliance)
-- ✅ Declined leads (respect decisions)
-- ✅ Service complaints (escalations)
-- ✅ Duplicate inquiries
-- ✅ Successfully recovered leads
-
-**Total Revenue at Risk**: ₹190,450  
-**Recovered Revenue**: ₹43,200  
-**Recovery Rate**: 8% → Target 20%+
-
----
-
-## 🎯 Use Cases
-
-### Perfect For:
-- AC repair & HVAC services
-- Plumbing services
-- Electrical contractors
-- Home renovation
-- Professional photography
-- Consulting services
-- Local retailers
-- Any inquiry-based business
-
-### Why Small Businesses Love It:
-- No dedicated sales team needed
-- Saves 2-3 hours per week
-- Recovers 15-25% of stale leads
-- Easy to use, no training required
-
----
-
-## 💰 Business Impact
-
-### Example ROI
-
-```
-Small Business (100 inquiries/month):
-├─ 40 go stale (40%)
-├─ Average value: ₹5,000
-└─ Revenue at risk: ₹200,000/month
-
-With ReviveAI:
-├─ Recover 20% of stale leads (8 leads)
-├─ Monthly recovered revenue: ₹40,000
-└─ Annual recovered revenue: ₹480,000
-
-Cost: ₹5,000/month
-ROI: 8x return on investment
-```
-
----
-
-## 🔐 Privacy & Security
-
-- **Opt-out Respect**: Customers who unsubscribe are never contacted
-- **Explicit Decline**: "No" is honored permanently
-- **Human Approval**: No automated emails without review
-- **Audit Trail**: Complete history for compliance
-- **Data Privacy**: GDPR-ready architecture
-- **Transparent AI**: Business owner sees reasoning
-
----
-
-## 📈 Roadmap
-
-### Phase 1: MVP ✅ (Current)
-- [x] Lead management dashboard
-- [x] AI analysis & message generation
-- [x] Human approval workflow
-- [x] Analytics & reporting
-- [x] 25 realistic demo scenarios
-- [x] **Advanced search & filters**
-- [x] **Bulk operations**
-- [x] **Lead scoring system**
-- [x] **CSV export**
-- [x] **Toast notifications**
-- [x] **Dark mode**
-
-### Phase 2: Production (Month 1-2)
-- [ ] Real Claude API integration
-- [ ] SMTP email sending
-- [ ] User authentication
-- [ ] Multi-business support
-- [ ] Template library
-
-### Phase 3: Intelligence (Month 3-4)
-- [ ] A/B testing effectiveness
-- [ ] Learning from patterns
-- [ ] Predictive lead scoring
-- [ ] Optimal send times
-
-### Phase 4: Scale (Month 5-6)
-- [ ] WhatsApp/SMS integration
-- [ ] CRM connectors
-- [ ] Mobile app
-- [ ] Multi-language support
-
----
-
-## 🧪 Development
-
-### Available Scripts
-
-```bash
-# Install dependencies
-npm install
-
-# Start development servers (both frontend & backend)
-npm run dev
-
-# Build for production
+# Build client and server
 npm run build
 
-# Start production server
-npm run start
-
-# Run tests (when available)
-npm test
-
-# Lint code
-npm run lint
+# Start production server (serves both API and React frontend on port 5000)
+npm start
+# Open http://localhost:5000 in your browser
 ```
 
-### Running Individual Services
+### Running Test Verification Suites
 
 ```bash
-# Frontend only (port 5173)
-cd packages/client
-npm run dev
+# Production smoke test (health, API, leads, analytics, contact form, SPA fallback)
+node packages/server/scripts/test-prod-smoke.js
 
-# Backend only (port 5000)
-cd packages/server
-npm run dev
+# 40-point API and business logic verification
+npx tsx packages/server/scripts/verify-api.ts
+
+# 10 core safety regression scenarios
+npx tsx packages/server/scripts/verify-scenarios.ts
+
+# 50-point comprehensive agent & tool test suite
+npx tsx packages/server/scripts/test-agent.ts
 ```
 
 ---
 
-## 🚀 Deployment
+## 📬 Contact & Support
 
-### GoDaddy Node.js Hosting
-
-1. Build the project:
-```bash
-npm run build
-```
-
-2. Configure environment variables in GoDaddy panel:
-```
-PORT=5000
-NODE_ENV=production
-ANTHROPIC_API_KEY=your-key
-```
-
-3. Start command: `npm run start`
-
-See [deployment.md](docs/deployment.md) for detailed instructions.
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
----
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🙏 Acknowledgments
-
-- **GoDaddy** for hosting the Inclusive Innovation Hackathon 2026
-- **Anthropic** for Claude AI API
-- **Small business owners** who shared their challenges
-- **Open source community** for excellent tools
-
----
-
-## 📞 Contact & Support
-
-- **Issues**: [GitHub Issues](https://github.com/yourusername/reviveai/issues)
-- **Email**: your-email@example.com
-- **Demo**: http://localhost:5173/
-
----
-
-## 🏆 Hackathon Submission
-
-This project was created for the **GoDaddy Inclusive Innovation Hackathon 2026**.
-
-**Why ReviveAI Wins**:
-- ✅ Solves real problem for small businesses
-- ✅ AI done right (safety-first, human-in-loop)
-- ✅ Production-ready code quality
-- ✅ Perfect GoDaddy integration story
-- ✅ Immediate, measurable ROI
-
-See [HACKATHON_SUBMISSION.md](HACKATHON_SUBMISSION.md) for complete submission details.
-
----
-
-<div align="center">
-
-**Built with ❤️ for small businesses**
-
-[Demo](http://localhost:5173/) • [Documentation](docs/) • [Report Bug](issues/) • [Request Feature](issues/)
-
-</div>
+For questions or inquiries regarding ReviveAI:
+- Visit the live contact form: [https://reviveaiapp.com/contact](https://reviveaiapp.com)
+- Email: **thejaswini@reviveaiapp.com**

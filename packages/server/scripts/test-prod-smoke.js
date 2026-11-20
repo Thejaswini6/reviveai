@@ -61,11 +61,25 @@ async function main() {
       body: JSON.stringify({
         name: 'Judge Evaluation Test',
         email: 'judge@godaddy.hackathon',
-        service: 'Central AC maintenance',
-        message: 'Testing live website inquiry ingestion and domain mailbox notification.'
+        subject: 'Evaluation Inquiry',
+        message: 'Testing live website contact form delivery to thejaswini@reviveaiapp.com.'
       })
     }).then(r => r.json());
-    console.log('✅ POST /api/contact:', contactRes.success ? 'PASSED' : 'FAILED', '| Created Lead:', contactRes.lead_id, '| Delivery Channel:', contactRes.delivery?.channel);
+    console.log('✅ POST /api/contact:', contactRes.success ? 'PASSED' : 'FAILED', '| Recipient:', contactRes.delivery?.recipient, '| Channel:', contactRes.delivery?.channel);
+
+    const leadRes = await fetch('http://127.0.0.1:5000/api/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Ananya Deshmukh',
+        email: 'ananya@example.com',
+        phone: '+91-98765-43210',
+        service: 'AC repair',
+        potential_value: 4500,
+        message: 'Urgent: Split AC stopped cooling.'
+      })
+    }).then(r => r.json());
+    console.log('✅ POST /api/leads (+ New Inquiry):', leadRes.success ? 'PASSED' : 'FAILED', '| Created Lead:', leadRes.lead_id, '| Name:', leadRes.lead?.name);
 
     console.log('\n================================================');
     console.log('🎉 ALL PRODUCTION SMOKE TESTS PASSED CLEANLY');
