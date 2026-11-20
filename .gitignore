@@ -6,14 +6,21 @@ yarn-error.log
 
 # Environment variables (NEVER commit these)
 .env
-.env.local
-.env.*.local
+.env.*
+packages/*/.env
+packages/*/.env.*
+packages/*/*.env
+!.env.example
+!packages/*/.env.example
+!packages/*/.env*.example
+*.env
 
 # Build outputs
 dist/
 build/
 *.tsbuildinfo
 out/
+*.zip
 
 # Database
 data/reviveai.db
