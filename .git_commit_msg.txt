@@ -1,6 +1,0 @@
-feat(domain): configure custom domain reviveaiapp.com and mailbox thejaswini@reviveaiapp.com
-
-- Update CORS default to include https://reviveaiapp.com and https://www.reviveaiapp.com
-- Set default domain mailbox to thejaswini@reviveaiapp.com in emailService
-- Update Contact Form UI to display thejaswini@reviveaiapp.com
-- Update .env.example with GoDaddy domain settings
