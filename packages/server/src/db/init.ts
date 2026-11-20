@@ -38,18 +38,22 @@ export async function initDb(): Promise<SqlJsDatabase> {
   }
 
   try {
+    // Use :memory: for in-memory database to avoid native module requirements
+    const dbPath = process.env.NODE_ENV === 'production' ? DB_PATH : ':memory:';
+    db = new Database(dbPath);
+    console.log(`📊 Connected to database: ${dbPath}`);
     // Initialize sql.js
-    SQL = await initSqlJs();
+    // SQL = await initSqlJs();
 
-    // Load existing database if it exists
-    if (fs.existsSync(DB_PATH)) {
-      const data = fs.readFileSync(DB_PATH);
-      db = new SQL.Database(data);
-      console.log(`📊 Connected to existing database: ${DB_PATH}`);
-    } else {
-      db = new SQL.Database();
-      console.log(`📊 Created new database`);
-    }
+    // // Load existing database if it exists
+    // if (fs.existsSync(DB_PATH)) {
+    //   const data = fs.readFileSync(DB_PATH);
+    //   db = new SQL.Database(data);
+    //   console.log(`📊 Connected to existing database: ${DB_PATH}`);
+    // } else {
+    //   db = new SQL.Database();
+    //   console.log(`📊 Created new database`);
+    // }
 
     // Enable foreign keys
     db.run('PRAGMA foreign_keys = ON');
@@ -187,3 +191,4 @@ export async function seedDatabase(leads: Array<any>): Promise<{ imported: numbe
     throw error;
   }
 }
+

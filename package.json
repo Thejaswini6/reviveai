@@ -9,14 +9,14 @@
     "pnpm": ">=8.0.0"
   },
   "scripts": {
-    "dev": "pnpm -r --parallel run dev",
-    "build": "pnpm -r run build",
+    "dev": "npm --workspace=packages/client run dev & npm --workspace=packages/server run dev",
+    "build": "npm run -r build",
     "start": "cd packages/server && node dist/index.js",
-    "db:seed": "cd packages/server && tsx scripts/seed.ts",
-    "db:migrate": "cd packages/server && tsx scripts/migrate.ts",
-    "test": "pnpm -r run test",
-    "lint": "pnpm -r run lint",
-    "format": "pnpm -r run format"
+    "db:seed": "cd packages/server && npm run db:seed",
+    "db:migrate": "cd packages/server && npm run db:migrate",
+    "test": "npm run -r test",
+    "lint": "npm run -r lint",
+    "format": "npm run -r format"
   },
   "dependencies": {},
   "devDependencies": {
