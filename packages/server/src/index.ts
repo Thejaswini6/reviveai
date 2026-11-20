@@ -9,6 +9,8 @@ import { fileURLToPath } from 'url';
 import { initDb, closeDb } from './db/init.js';
 import { ENV } from './env.js';
 import { logger } from './utils/logger.js';
+import leadsRouter from './api/leads.js';
+import analyticsRouter from './api/analytics.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -42,7 +44,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// API routes (to be implemented)
+// API root
 app.get('/api', (req, res) => {
   res.json({
     name: 'ReviveAI Server',
@@ -52,19 +54,14 @@ app.get('/api', (req, res) => {
   });
 });
 
-// Placeholder routes
-app.get('/api/leads', (req, res) => {
-  res.json({ leads: [], total: 0, page: 1 });
-});
-
-app.get('/api/analytics/summary', (req, res) => {
-  res.json({
-    total_leads: 0,
-    new_leads: 0,
-    stale_leads: 0,
-    total_revenue_at_risk: 0,
-    recovery_rate_percent: 0,
-    pending_approvals: 0,
+// Mount routers
+app.use('/api', leadsRouter);
+app.use('/api/analytics', analyticsRouter);
+app.use('/api/agent', (req, res) => {
+  res.status(501).json({
+    success: false,
+    error: 'Not implemented',
+    message: 'Agent endpoints will be implemented in Phase 4-5',
   });
 });
 

@@ -21,6 +21,8 @@ export enum LeadStatus {
   ESCALATED = 'ESCALATED',
   DECLINED = 'DECLINED',
   OPTED_OUT = 'OPTED_OUT',
+  CONVERTED = 'CONVERTED',
+  CALLBACK_REQUESTED = 'CALLBACK_REQUESTED',
 }
 
 // Contact consent enum

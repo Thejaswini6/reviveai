@@ -27,7 +27,7 @@ export const SCHEMA = {
       message TEXT,
       enquiry_type TEXT,
       potential_value DECIMAL(10, 2),
-      status TEXT CHECK(status IN ('NEW', 'STALE', 'CONTACTED', 'RECOVERED', 'ESCALATED', 'DECLINED', 'OPTED_OUT')),
+      status TEXT CHECK(status IN ('NEW', 'STALE', 'CONTACTED', 'RECOVERED', 'ESCALATED', 'DECLINED', 'OPTED_OUT', 'QUOTE_SENT', 'BOOKING_PENDING', 'CALLBACK_REQUESTED', 'CONVERTED')),
       received_at DATETIME NOT NULL,
       last_contacted_at DATETIME,
       follow_up_count INTEGER DEFAULT 0,
